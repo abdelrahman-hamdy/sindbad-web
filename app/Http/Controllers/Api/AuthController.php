@@ -277,9 +277,12 @@ class AuthController extends Controller
     {
         $user = $request->user();
         $request->validate([
-            'name' => 'required|string|max:255',
-            'phone' => 'required|string|unique:users,phone,' . $user->id,
-            'password' => 'nullable|string|min:6|confirmed',
+            'name'              => 'required|string|max:255',
+            'phone'             => 'required|string|unique:users,phone,' . $user->id,
+            'password'          => 'nullable|string|min:6|confirmed',
+            'default_address'   => 'nullable|string|max:500',
+            'default_latitude'  => 'nullable|numeric|between:-90,90',
+            'default_longitude' => 'nullable|numeric|between:-180,180',
         ]);
 
         $user->name = $request->name;
@@ -291,6 +294,16 @@ class AuthController extends Controller
 
         if ($request->filled('fcm_token')) {
             $user->fcm_token = $request->fcm_token;
+        }
+
+        if ($request->has('default_address')) {
+            $user->default_address = $request->default_address;
+        }
+        if ($request->has('default_latitude')) {
+            $user->default_latitude = $request->default_latitude;
+        }
+        if ($request->has('default_longitude')) {
+            $user->default_longitude = $request->default_longitude;
         }
 
         $user->save();

@@ -13,6 +13,7 @@ use App\Services\NotificationService;
 use App\Services\Odoo\OdooServiceInterface;
 use App\Services\RequestService;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 
@@ -187,21 +188,22 @@ class RequestController extends Controller
     public function getMyOrders(Request $request)
     {
         $user = $request->user();
-        $partner = $this->odoo->findCustomerByPhoneOrName($user->phone, $user->name);
 
-        if (! $partner) {
-            return response()->json(['success' => true, 'message' => __('No linked Odoo account'), 'data' => []]);
-        }
+        $formatted = Cache::remember('user_orders_' . $user->id, 600, function () use ($user) {
+            $partner = $this->odoo->findCustomerByPhoneOrName($user->phone, $user->name);
+            if (! $partner) {
+                return [];
+            }
+            $orders = $this->odoo->getCustomerOrders($partner['id'], $user->phone, $user->name);
 
-        $orders = $this->odoo->getCustomerOrders($partner['id'], $user->phone, $user->name);
-
-        $formatted = array_map(fn($o) => [
-            'id' => $o['id'],
-            'invoice_number' => $o['name'],
-            'date' => $o['date_order'],
-            'quotation_template' => is_array($o['sale_order_template_id']) ? $o['sale_order_template_id'][1] : null,
-            'total' => $o['amount_total'],
-        ], $orders);
+            return array_map(fn($o) => [
+                'id'                 => $o['id'],
+                'invoice_number'     => $o['name'],
+                'date'               => $o['date_order'],
+                'quotation_template' => is_array($o['sale_order_template_id']) ? $o['sale_order_template_id'][1] : null,
+                'total'              => $o['amount_total'],
+            ], $orders);
+        });
 
         return response()->json(['success' => true, 'data' => $formatted]);
     }

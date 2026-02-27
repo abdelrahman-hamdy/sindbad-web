@@ -28,6 +28,9 @@ class User extends Authenticatable implements FilamentUser
         'quotation_template',
         'profile_link',
         'avatar_url',
+        'default_address',
+        'default_latitude',
+        'default_longitude',
     ];
 
     protected $hidden = [
