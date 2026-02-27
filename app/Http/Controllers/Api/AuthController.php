@@ -75,14 +75,30 @@ class AuthController extends Controller
     {
         $request->validate([
             'phone' => 'required|string',
+            'otp' => 'required|string',
             'password' => 'required|string|min:6|confirmed',
         ]);
 
         try {
-            $cached = Cache::get('auth_otp_' . $request->phone);
+            // Already activated check
+            $user = \App\Models\User::where('phone', $request->phone)->first();
+            if ($user && $user->is_active) {
+                return response()->json([
+                    'success' => false,
+                    'message' => __('Account already activated. Please login.'),
+                    'already_activated' => true,
+                ], 409);
+            }
 
-            if (! $cached || ! $cached['verified']) {
-                return response()->json(['success' => false, 'message' => __('Session expired or not verified.')], 400);
+            // Retrieve cached phone data (from validatePhone)
+            $cached = Cache::get('auth_otp_' . $request->phone);
+            if (! $cached) {
+                return response()->json(['success' => false, 'message' => __('Session expired. Please start over.')], 400);
+            }
+
+            // Validate OTP directly
+            if (! $this->hyperSender->validateOtp($request->phone, $request->otp)) {
+                return response()->json(['success' => false, 'message' => __('Invalid or expired OTP.')], 400);
             }
 
             $token = $this->authService->activateUser(
