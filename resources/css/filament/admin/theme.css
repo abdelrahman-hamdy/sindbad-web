@@ -1,0 +1,35 @@
+@import url('https://fonts.googleapis.com/css2?family=Tajawal:wght@300;400;500;700&display=swap');
+@import '../../../../vendor/filament/filament/resources/css/theme.css';
+
+@source '../../../../app/Filament/**/*';
+@source '../../../../resources/views/filament/**/*';
+@source '../../../../resources/views/livewire/**/*';
+
+/* Arabic font — applied only in RTL mode */
+[dir="rtl"],
+[dir="rtl"] * {
+    font-family: 'Tajawal', sans-serif;
+}
+
+/* Remove elastic/rubber-band overscroll effect */
+html {
+    overscroll-behavior: none;
+}
+
+/* Make every widget card fill the full height of its grid row */
+.fi-dashboard-grid > .fi-sc > div > .fi-sc-component {
+    height: 100%;
+    display: flex;
+    flex-direction: column;
+}
+.fi-dashboard-grid > .fi-sc > div > .fi-sc-component > * {
+    flex: 1 0 auto;
+}
+/* Propagate height through x-filament::section internals */
+.fi-dashboard-grid > .fi-sc > div > .fi-sc-component > .fi-section {
+    display: flex;
+    flex-direction: column;
+}
+.fi-dashboard-grid > .fi-sc > div > .fi-sc-component > .fi-section > .fi-section-content-ctn {
+    flex: 1;
+}
