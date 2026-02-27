@@ -6,6 +6,7 @@ use App\Http\Controllers\Api\InstallationController;
 use App\Http\Controllers\Api\NotificationController;
 use App\Http\Controllers\Api\RequestController;
 use App\Http\Controllers\Api\TechnicianController;
+use App\Http\Controllers\Api\CustomerHomeController;
 use App\Http\Controllers\Api\WebhookController;
 use Illuminate\Support\Facades\Route;
 
@@ -26,6 +27,8 @@ Route::middleware(['auth:sanctum', \App\Http\Middleware\EnsureUserIsActive::clas
     // Profile
     Route::get('/profile', [AuthController::class, 'profile']);
     Route::post('/update-profile', [AuthController::class, 'updateProfile']);
+    Route::get('/customer/home', [CustomerHomeController::class, 'home']);
+    Route::post('/auth/change-password', [AuthController::class, 'changePassword']);
     Route::get('/user', fn(\Illuminate\Http\Request $r) => $r->user());
     Route::post('/auth/logout', [AuthController::class, 'logout']);
     Route::post('/profile/picture', [AuthController::class, 'uploadAvatar']);

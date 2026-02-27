@@ -235,6 +235,20 @@ class AuthController extends Controller
         ]);
     }
 
+    public function changePassword(Request $request)
+    {
+        $request->validate([
+            'password' => 'required|string|min:6|confirmed',
+        ]);
+
+        $request->user()->update(['password' => bcrypt($request->password)]);
+
+        return response()->json([
+            'success' => true,
+            'message' => __('Password changed successfully.'),
+        ]);
+    }
+
     public function updateProfile(Request $request)
     {
         $user = $request->user();
