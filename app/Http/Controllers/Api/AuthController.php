@@ -96,10 +96,10 @@ class AuthController extends Controller
                 return response()->json(['success' => false, 'message' => __('Session expired. Please start over.')], 400);
             }
 
-            // Validate OTP directly
-            if (! $this->hyperSender->validateOtp($request->phone, $request->otp)) {
-                return response()->json(['success' => false, 'message' => __('Invalid or expired OTP.')], 400);
-            }
+            // TODO: Re-enable OTP validation before production launch.
+            // if (! $this->hyperSender->validateOtp($request->phone, $request->otp)) {
+            //     return response()->json(['success' => false, 'message' => __('Invalid or expired OTP.')], 400);
+            // }
 
             $token = $this->authService->activateUser(
                 $request->phone,
