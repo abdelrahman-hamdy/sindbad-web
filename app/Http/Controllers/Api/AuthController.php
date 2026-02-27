@@ -277,16 +277,20 @@ class AuthController extends Controller
     {
         $user = $request->user();
         $request->validate([
-            'name'              => 'required|string|max:255',
-            'phone'             => 'required|string|unique:users,phone,' . $user->id,
+            'name'              => 'nullable|string|max:255',
+            'phone'             => 'nullable|string|unique:users,phone,' . $user->id,
             'password'          => 'nullable|string|min:6|confirmed',
             'default_address'   => 'nullable|string|max:500',
             'default_latitude'  => 'nullable|numeric|between:-90,90',
             'default_longitude' => 'nullable|numeric|between:-180,180',
         ]);
 
-        $user->name = $request->name;
-        $user->phone = $request->phone;
+        if ($request->has('name')) {
+            $user->name = $request->name;
+        }
+        if ($request->has('phone')) {
+            $user->phone = $request->phone;
+        }
 
         if ($request->filled('password')) {
             $user->password = bcrypt($request->password);
