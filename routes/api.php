@@ -26,11 +26,18 @@ Route::middleware(['auth:sanctum', \App\Http\Middleware\EnsureUserIsActive::clas
 
     // Profile
     Route::get('/profile', [AuthController::class, 'profile']);
-    Route::post('/update-profile', [AuthController::class, 'updateProfile']);
     Route::get('/customer/home', [CustomerHomeController::class, 'home']);
     Route::post('/auth/change-password', [AuthController::class, 'changePassword']);
     Route::get('/user', fn(\Illuminate\Http\Request $r) => $r->user());
     Route::post('/auth/logout', [AuthController::class, 'logout']);
+
+    // New RESTful routes
+    Route::patch('/user/profile', [AuthController::class, 'updateProfile']);
+    Route::post('/user/avatar', [AuthController::class, 'uploadAvatar']);
+    Route::patch('/user/fcm-token', [AuthController::class, 'updateFcmToken']);
+
+    // Old routes kept as backwards-compat aliases
+    Route::post('/update-profile', [AuthController::class, 'updateProfile']);
     Route::post('/profile/picture', [AuthController::class, 'uploadAvatar']);
 
     // Notifications
@@ -65,6 +72,7 @@ Route::middleware(['auth:sanctum', \App\Http\Middleware\EnsureUserIsActive::clas
     Route::delete('/installation-requests/{id}', [InstallationController::class, 'destroy']);
 
     // Technician App
+    Route::get('/technician/home', [TechnicianController::class, 'home']);
     Route::get('/technician/schedule', [RequestController::class, 'getMySchedule']);
     Route::post('/technician/service-requests/accept', [RequestController::class, 'acceptRequest']);
     Route::post('/technician/installation-requests/accept', [InstallationController::class, 'acceptRequest']);

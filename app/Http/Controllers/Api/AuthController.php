@@ -32,7 +32,7 @@ class AuthController extends Controller
                 'phone' => $customer['phone'],
                 'otp_sent' => (bool) $otpSent,
                 'verified' => false,
-            ], 600);
+            ], config('sindbad.otp_ttl'));
 
             return response()->json([
                 'success' => true,
@@ -249,6 +249,14 @@ class AuthController extends Controller
         ]);
     }
 
+    public function updateFcmToken(Request $request)
+    {
+        $request->validate(['fcm_token' => 'required|string|max:500']);
+        $request->user()->update(['fcm_token' => $request->fcm_token]);
+
+        return response()->json(['success' => true]);
+    }
+
     public function updateProfile(Request $request)
     {
         $user = $request->user();
@@ -263,6 +271,10 @@ class AuthController extends Controller
 
         if ($request->filled('password')) {
             $user->password = bcrypt($request->password);
+        }
+
+        if ($request->filled('fcm_token')) {
+            $user->fcm_token = $request->fcm_token;
         }
 
         $user->save();
