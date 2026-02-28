@@ -592,42 +592,53 @@ function liveMap(initialLocations) {
         },
 
         async drawRoute(fromLat, fromLng, toLat, toLng) {
+            if (!this.map) return;
+
             // Clear previous route polyline (keep destMarker — caller manages it)
             if (this.routePolyline) {
                 this.routePolyline.remove();
                 this.routePolyline = null;
             }
 
-            if (toLat == null || toLng == null) return;
+            // Ensure all coords are numbers
+            fromLat = parseFloat(fromLat); fromLng = parseFloat(fromLng);
+            toLat   = parseFloat(toLat);   toLng   = parseFloat(toLng);
+            if ([fromLat, fromLng, toLat, toLng].some(isNaN)) return;
 
-            // Fetch OSRM driving route
+            // Force Leaflet to recalculate pixel bounds before adding any layer.
+            // Without this, _pxBounds can be undefined when the map container was
+            // not yet visible at initialisation time, causing a TypeError in
+            // Polyline._clipPoints → Bounds.intersects (reading 'x').
+            this.map.invalidateSize({ animate: false });
+
+            // Yield one microtask so the invalidation settles before layer add
+            await new Promise(resolve => setTimeout(resolve, 0));
+            if (!this.map) return;
+
             this.routeLoading = true;
+            const straightLine = () => L.polyline(
+                [[fromLat, fromLng], [toLat, toLng]],
+                { color: '#3b82f6', weight: 3, opacity: 0.6, dashArray: '10 8' }
+            );
             try {
                 const pts = await this.fetchOSRMRoute(fromLat, fromLng, toLat, toLng);
-                if (pts) {
-                    this.routePolyline = L.polyline(pts, {
-                        color: '#3b82f6', weight: 4, opacity: 0.75,
-                    }).addTo(this.map);
-                } else {
-                    // OSRM returned no route (e.g. cross-country) — draw straight line
-                    this.routePolyline = L.polyline(
-                        [[fromLat, fromLng], [toLat, toLng]],
-                        { color: '#3b82f6', weight: 3, opacity: 0.6, dashArray: '10 8' }
-                    ).addTo(this.map);
-                }
+                this.routePolyline = (pts
+                    ? L.polyline(pts, { color: '#3b82f6', weight: 4, opacity: 0.75 })
+                    : straightLine()
+                ).addTo(this.map);
                 const bounds = this.routePolyline.getBounds();
                 if (bounds.isValid()) {
                     this.map.flyToBounds(bounds, { padding: [80, 80], duration: 0.6 });
                 }
             } catch (_) {
-                // Network error fallback — straight dashed line
-                this.routePolyline = L.polyline(
-                    [[fromLat, fromLng], [toLat, toLng]],
-                    { color: '#3b82f6', weight: 3, opacity: 0.6, dashArray: '10 8' }
-                ).addTo(this.map);
-                const bounds = this.routePolyline.getBounds();
-                if (bounds.isValid()) {
-                    this.map.flyToBounds(bounds, { padding: [80, 80], duration: 0.6 });
+                try {
+                    this.routePolyline = straightLine().addTo(this.map);
+                    const bounds = this.routePolyline.getBounds();
+                    if (bounds.isValid()) {
+                        this.map.flyToBounds(bounds, { padding: [80, 80], duration: 0.6 });
+                    }
+                } catch (e2) {
+                    console.warn('drawRoute: could not add polyline', e2);
                 }
             }
             this.routeLoading = false;
@@ -650,11 +661,15 @@ function liveMap(initialLocations) {
         },
 
         updateDestMarker(activeRequest) {
+            if (!this.map) return;
+            const lat = parseFloat(activeRequest.customer_lat);
+            const lng = parseFloat(activeRequest.customer_lng);
+            if (isNaN(lat) || isNaN(lng)) return;
             if (this.destMarker) {
-                this.destMarker.setLatLng([activeRequest.customer_lat, activeRequest.customer_lng]);
+                this.destMarker.setLatLng([lat, lng]);
                 this.destMarker.bindPopup(this.buildDestPopupContent(activeRequest));
             } else {
-                this.destMarker = L.marker([activeRequest.customer_lat, activeRequest.customer_lng], {
+                this.destMarker = L.marker([lat, lng], {
                     icon: L.divIcon({
                         className: '',
                         html: '<div style="background:#ef4444;width:16px;height:16px;border-radius:50%;border:3px solid white;box-shadow:0 2px 6px rgba(0,0,0,0.4)"></div>',
