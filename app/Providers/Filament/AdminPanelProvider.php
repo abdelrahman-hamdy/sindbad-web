@@ -44,7 +44,7 @@ class AdminPanelProvider extends PanelProvider
             ->login(Login::class)
             ->brandName('Sindbad Admin')
             ->brandLogo(fn() => view('filament.partials.brand'))
-            ->brandLogoHeight('2rem')
+            ->brandLogoHeight('auto')
             ->colors([
                 'primary' => Color::Blue,
             ])
