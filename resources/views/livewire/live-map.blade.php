@@ -397,6 +397,25 @@ function liveMap(initialLocations) {
                 attribution: '© <a href="https://openstreetmap.org/copyright">OpenStreetMap</a>',
                 maxZoom: 19,
             }).addTo(this.map);
+
+            // Pre-create route polyline and destination marker once, then reuse via
+            // setLatLngs / setLatLng / setOpacity instead of add/remove.
+            // This avoids the Leaflet bug where addTo() registers the layer in _layers
+            // BEFORE onAdd() throws (Bounds.x TypeError mid-animation), leaving a broken
+            // layer that crashes every subsequent _moveEnd → _updatePaths cycle.
+            this.routePolyline = L.polyline([], {
+                color: '#3b82f6', weight: 4, opacity: 0.75,
+            }).addTo(this.map);
+
+            this.destMarker = L.marker([23.5880, 58.3829], {
+                opacity: 0,
+                icon: L.divIcon({
+                    className: '',
+                    html: '<div style="background:#ef4444;width:16px;height:16px;border-radius:50%;border:3px solid white;box-shadow:0 2px 6px rgba(0,0,0,0.4)"></div>',
+                    iconSize: [16, 16], iconAnchor: [8, 8],
+                }),
+            }).addTo(this.map);
+
             this.locations.forEach(loc => this.syncMarker(loc));
             this.connectEcho();
         },
@@ -556,22 +575,16 @@ function liveMap(initialLocations) {
             const hasRoute = tech.active_request?.customer_lat && tech.active_request?.customer_lng;
 
             if (hasRoute) {
-                // Let drawRoute handle camera positioning via flyToBounds.
-                // Do NOT also call flyTo here — adding a polyline while the map is
-                // mid-flight causes Leaflet to register a broken layer in _layers,
-                // which then crashes every subsequent _moveEnd → _updatePaths cycle.
+                // drawRoute handles camera via flyToBounds — no separate flyTo needed
                 this.updateDestMarker(tech.active_request);
                 await this.drawRoute(
                     parseFloat(tech.latitude), parseFloat(tech.longitude),
                     parseFloat(tech.active_request.customer_lat),
                     parseFloat(tech.active_request.customer_lng),
                 );
-                this.markers[tech.technician_id]?.openPopup();
             } else {
                 this.clearRouteAndDest();
-                // No route to draw — safe to flyTo directly
                 this.map.flyTo([parseFloat(tech.latitude), parseFloat(tech.longitude)], 15, { duration: 0.8 });
-                this.markers[tech.technician_id]?.openPopup();
             }
         },
 
@@ -593,59 +606,36 @@ function liveMap(initialLocations) {
         flyToCustomer() {
             if (!this.selectedTechRequest?.customer_lat || !this.selectedTechRequest?.customer_lng) return;
             this.map.flyTo(
-                [this.selectedTechRequest.customer_lat, this.selectedTechRequest.customer_lng],
+                [parseFloat(this.selectedTechRequest.customer_lat), parseFloat(this.selectedTechRequest.customer_lng)],
                 16, { duration: 0.8 }
             );
             this.destMarker?.openPopup();
         },
 
         async drawRoute(fromLat, fromLng, toLat, toLng) {
-            if (!this.map) return;
+            if (!this.map || !this.routePolyline) return;
 
-            // Clear previous route polyline (keep destMarker — caller manages it)
-            if (this.routePolyline) {
-                this.routePolyline.remove();
-                this.routePolyline = null;
-            }
-
-            // Ensure all coords are numbers
             fromLat = parseFloat(fromLat); fromLng = parseFloat(fromLng);
             toLat   = parseFloat(toLat);   toLng   = parseFloat(toLng);
             if ([fromLat, fromLng, toLat, toLng].some(isNaN)) return;
 
-            // CRITICAL: stop any in-progress flyTo/flyToBounds animation before adding
-            // a polyline layer.  When the map is mid-flight Leaflet registers the layer
-            // in _layers BEFORE onAdd throws (Bounds.x TypeError), leaving a broken
-            // layer that crashes every subsequent _moveEnd → _updatePaths cycle.
-            this.map.stop();
-
             this.routeLoading = true;
-            const straightLine = () => L.polyline(
-                [[fromLat, fromLng], [toLat, toLng]],
-                { color: '#3b82f6', weight: 3, opacity: 0.6, dashArray: '10 8' }
-            );
-
-            const addAndFit = (polyline) => {
-                polyline.addTo(this.map);
-                this.routePolyline = polyline;
-                const bounds = polyline.getBounds();
-                if (bounds.isValid()) {
-                    this.map.flyToBounds(bounds, { padding: [80, 80], duration: 0.8 });
-                }
-            };
-
             try {
                 const pts = await this.fetchOSRMRoute(fromLat, fromLng, toLat, toLng);
-                addAndFit(pts
-                    ? L.polyline(pts, { color: '#3b82f6', weight: 4, opacity: 0.75 })
-                    : straightLine()
-                );
-            } catch (e) {
-                try {
-                    addAndFit(straightLine());
-                } catch (e2) {
-                    console.warn('drawRoute: fallback polyline failed', e2);
+                if (pts) {
+                    this.routePolyline.setLatLngs(pts);
+                    this.routePolyline.setStyle({ weight: 4, opacity: 0.75, dashArray: null });
+                } else {
+                    this.routePolyline.setLatLngs([[fromLat, fromLng], [toLat, toLng]]);
+                    this.routePolyline.setStyle({ weight: 3, opacity: 0.6, dashArray: '10 8' });
                 }
+            } catch (_) {
+                this.routePolyline.setLatLngs([[fromLat, fromLng], [toLat, toLng]]);
+                this.routePolyline.setStyle({ weight: 3, opacity: 0.6, dashArray: '10 8' });
+            }
+            const bounds = this.routePolyline.getBounds();
+            if (bounds.isValid()) {
+                this.map.flyToBounds(bounds, { padding: [80, 80], duration: 0.8 });
             }
             this.routeLoading = false;
         },
@@ -667,24 +657,13 @@ function liveMap(initialLocations) {
         },
 
         updateDestMarker(activeRequest) {
-            if (!this.map) return;
+            if (!this.destMarker) return;
             const lat = parseFloat(activeRequest.customer_lat);
             const lng = parseFloat(activeRequest.customer_lng);
             if (isNaN(lat) || isNaN(lng)) return;
-            if (this.destMarker) {
-                this.destMarker.setLatLng([lat, lng]);
-                this.destMarker.bindPopup(this.buildDestPopupContent(activeRequest));
-            } else {
-                this.destMarker = L.marker([lat, lng], {
-                    icon: L.divIcon({
-                        className: '',
-                        html: '<div style="background:#ef4444;width:16px;height:16px;border-radius:50%;border:3px solid white;box-shadow:0 2px 6px rgba(0,0,0,0.4)"></div>',
-                        iconSize: [16, 16],
-                        iconAnchor: [8, 8],
-                    })
-                }).addTo(this.map)
-                  .bindPopup(this.buildDestPopupContent(activeRequest));
-            }
+            this.destMarker.setLatLng([lat, lng]);
+            this.destMarker.setOpacity(1);
+            this.destMarker.bindPopup(this.buildDestPopupContent(activeRequest));
             // Popup opens only when user clicks "Customer Location" button (flyToCustomer)
         },
 
@@ -723,8 +702,9 @@ function liveMap(initialLocations) {
         },
 
         clearRouteAndDest() {
-            if (this.routePolyline) { this.map.removeLayer(this.routePolyline); this.routePolyline = null; }
-            if (this.destMarker) { this.map.removeLayer(this.destMarker); this.destMarker = null; }
+            this.routePolyline?.setLatLngs([]);
+            this.destMarker?.setOpacity(0);
+            this.destMarker?.closePopup();
         },
 
         onRequestStatusChanged(data) {
