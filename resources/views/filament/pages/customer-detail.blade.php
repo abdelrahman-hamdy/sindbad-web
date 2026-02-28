@@ -14,11 +14,16 @@
     <div class="bg-white dark:bg-gray-800 rounded-2xl shadow-sm border border-gray-200 dark:border-gray-700 p-6 mb-6">
         <div class="flex flex-col sm:flex-row sm:items-center gap-6">
             {{-- Avatar --}}
-            <div class="shrink-0 w-20 h-20 rounded-full bg-gradient-to-br from-primary-400 to-primary-600 flex items-center justify-center shadow-md">
-                <span class="text-3xl font-bold text-white">
-                    {{ strtoupper(mb_substr($customer->name, 0, 1)) }}
-                </span>
-            </div>
+            @if ($customer->avatar_url)
+                <img src="{{ $customer->avatar_url }}" alt="{{ $customer->name }}"
+                     class="shrink-0 w-20 h-20 rounded-full object-cover shadow-md border-2 border-white dark:border-gray-700">
+            @else
+                <div class="shrink-0 w-20 h-20 rounded-full bg-gradient-to-br from-primary-400 to-primary-600 flex items-center justify-center shadow-md">
+                    <span class="text-3xl font-bold text-white">
+                        {{ strtoupper(mb_substr($customer->name, 0, 1)) }}
+                    </span>
+                </div>
+            @endif
             {{-- Info --}}
             <div class="flex-1 min-w-0">
                 <div class="flex flex-wrap items-center gap-3 mb-1">
@@ -51,23 +56,32 @@
                         </svg>
                         {{ __('Joined') }} {{ $customer->created_at->format('M d, Y') }}
                     </span>
-                    @if ($customer->default_address)
-                        <span class="flex items-center gap-1.5">
-                            <svg class="w-4 h-4 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                </div>
+                {{-- Default Address — separate styled section --}}
+                @if ($customer->default_address)
+                    <div class="mt-3 pt-3 border-t border-gray-100 dark:border-gray-700">
+                        <div class="flex items-start gap-2.5 bg-gray-50 dark:bg-gray-700/40 rounded-xl px-3 py-2.5">
+                            <svg class="w-4 h-4 text-primary-500 shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z"/>
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z"/>
                             </svg>
-                            <span>{{ $customer->default_address }}</span>
-                            @if ($customer->default_latitude && $customer->default_longitude)
-                                <a href="https://maps.google.com/?q={{ $customer->default_latitude }},{{ $customer->default_longitude }}"
-                                   target="_blank"
-                                   class="text-primary-500 hover:underline text-xs ml-1">
-                                    {{ __('View on map') }}
-                                </a>
-                            @endif
-                        </span>
-                    @endif
-                </div>
+                            <div class="flex-1 min-w-0">
+                                <p class="text-xs font-medium text-gray-400 dark:text-gray-500 mb-0.5">{{ __('Default Address') }}</p>
+                                <p class="text-sm text-gray-700 dark:text-gray-200 leading-snug">{{ $customer->default_address }}</p>
+                                @if ($customer->default_latitude && $customer->default_longitude)
+                                    <a href="https://maps.google.com/?q={{ $customer->default_latitude }},{{ $customer->default_longitude }}"
+                                       target="_blank"
+                                       class="inline-flex items-center gap-1 mt-1 text-xs font-semibold text-primary-600 dark:text-primary-400 hover:underline">
+                                        <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14"/>
+                                        </svg>
+                                        {{ __('View on Map') }}
+                                    </a>
+                                @endif
+                            </div>
+                        </div>
+                    </div>
+                @endif
             </div>
         </div>
     </div>
