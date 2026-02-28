@@ -86,6 +86,18 @@ class RequestService
             throw new Exception(__('لا يمكن إكمال الطلب قبل الحصول على تقييم العميل'));
         }
 
+        // Prevent a technician from having more than one on_way task simultaneously
+        if ($newStatus === RequestStatus::OnWay && $request->technician_id) {
+            $alreadyOnWay = Request::where('technician_id', $request->technician_id)
+                ->where('id', '!=', $request->id)
+                ->where('status', RequestStatus::OnWay->value)
+                ->exists();
+
+            if ($alreadyOnWay) {
+                throw new Exception(__('لديك طلب آخر في الطريق بالفعل. يرجى إنهاؤه أو إلغاؤه أولاً'));
+            }
+        }
+
         $updateData = ['status' => $newStatus->value];
         if ($newStatus === RequestStatus::Completed) {
             $updateData['completed_at'] = now();
