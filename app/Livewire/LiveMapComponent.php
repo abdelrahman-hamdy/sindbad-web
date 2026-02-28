@@ -72,6 +72,8 @@ class LiveMapComponent extends Component
      */
     public function refreshLocations(): void
     {
+        $staleThreshold = now()->subMinutes(10);
+
         $locations = TechnicianLocation::with('technician')
             ->get()
             ->map(fn($loc) => [
@@ -82,7 +84,7 @@ class LiveMapComponent extends Component
                 'longitude'     => $loc->longitude,
                 'heading'       => $loc->heading,
                 'speed'         => $loc->speed,
-                'is_online'     => $loc->is_online,
+                'is_online'     => $loc->is_online && $loc->updated_at?->gt($staleThreshold),
                 'recorded_at'   => $loc->recorded_at?->toISOString(),
                 'updated_at'    => $loc->updated_at?->toISOString(),
             ])
@@ -94,6 +96,8 @@ class LiveMapComponent extends Component
 
     private function loadLocations(): void
     {
+        $staleThreshold = now()->subMinutes(10);
+
         $this->technicianLocations = TechnicianLocation::with('technician')
             ->get()
             ->map(fn($loc) => [
@@ -104,7 +108,7 @@ class LiveMapComponent extends Component
                 'longitude'     => $loc->longitude,
                 'heading'       => $loc->heading,
                 'speed'         => $loc->speed,
-                'is_online'     => $loc->is_online,
+                'is_online'     => $loc->is_online && $loc->updated_at?->gt($staleThreshold),
                 'recorded_at'   => $loc->recorded_at?->toISOString(),
                 'updated_at'    => $loc->updated_at?->toISOString(),
             ])

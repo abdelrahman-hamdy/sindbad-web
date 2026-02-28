@@ -52,4 +52,15 @@ class TechnicianLocationService
             ->where('is_online', true)
             ->get();
     }
+
+    /**
+     * Mark as offline any technician whose last location update is older than
+     * $minutes minutes. Returns the number of records updated.
+     */
+    public function expireStale(int $minutes = 10): int
+    {
+        return TechnicianLocation::where('is_online', true)
+            ->where('updated_at', '<', now()->subMinutes($minutes))
+            ->update(['is_online' => false]);
+    }
 }
