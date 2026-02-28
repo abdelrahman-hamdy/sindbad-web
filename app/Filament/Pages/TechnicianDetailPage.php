@@ -111,11 +111,14 @@ class TechnicianDetailPage extends Page
             ->selectRaw('AVG((COALESCE(product_rating,0) + COALESCE(service_rating,0)) / 2) as avg')
             ->value('avg');
 
+        $pending = Request::where('technician_id', $this->technician->id)
+            ->whereNotIn('status', [RequestStatus::Completed->value, 'canceled'])
+            ->count();
+
         $this->techStats = [
-            'total'           => $total,
-            'completed'       => $completed,
-            'avg_rating'      => $avgRating ? round((float)$avgRating, 1) : null,
-            'acceptance_rate' => $total > 0 ? round($accepted / $total * 100, 1) : 0,
+            'total'     => $total,
+            'completed' => $completed,
+            'pending'   => $pending,
         ];
     }
 
