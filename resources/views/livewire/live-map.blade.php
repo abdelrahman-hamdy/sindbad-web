@@ -104,7 +104,7 @@
                         <button
                             type="button"
                             x-show="tech.is_online"
-                            @click.stop.prevent="showTechRequestDetails(tech.technician_id)"
+                            @click.stop.prevent="console.log('[DETAILS BTN] clicked, id=', tech.technician_id); showTechRequestDetails(tech.technician_id)"
                             class="mt-1 w-full inline-flex items-center justify-center gap-1 text-[10px] font-semibold px-2 py-1 rounded-lg bg-primary-600 hover:bg-primary-700 text-white transition"
                         >
                             <svg xmlns="http://www.w3.org/2000/svg" class="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -515,7 +515,7 @@ function liveMap(initialLocations) {
         buildPopupContent(data) {
             const updated = data.updated_at ? this.relativeTime(data.updated_at) : 'N/A';
             const status  = data.is_online ? '<span style="color:#22c55e;">●</span> Online' : '<span style="color:#9ca3af;">●</span> Offline';
-            const speed   = data.speed > 0 ? `<div>⚡ <strong>${Math.round(data.speed)} km/h</strong></div>` : '';
+            const speed   = data.speed != null ? `<div>⚡ <strong>${Math.round(data.speed)} km/h</strong></div>` : '';
             const hdg     = data.heading != null ? `<div>↗ ${Math.round(data.heading)}°</div>` : '';
 
             return `<div style="font-family:system-ui,sans-serif;padding:10px 12px;min-width:180px;line-height:1.6;">
@@ -558,16 +558,19 @@ function liveMap(initialLocations) {
         },
 
         // ── "تفاصيل الطلب" button: open detail panel for this technician ────────
-        // Accepts technician_id (primitive) — avoids x-for scope capture bugs
         showTechRequestDetails(technicianId) {
+            console.log('[showTechRequestDetails] called, id=', technicianId, 'locations=', this.locations.length);
             const tech = this.locations.find(l => l.technician_id === technicianId);
+            console.log('[showTechRequestDetails] tech found=', tech, 'cached req=', tech?.active_request);
             const cached = tech?.active_request ?? null;
             this.selectedTechRequest = cached;
-            this.detailsLoading = !cached; // spinner only when no cached data
+            this.detailsLoading = !cached;
             this.requestPanelOpen = true;
+            console.log('[showTechRequestDetails] requestPanelOpen set to TRUE');
             try {
                 this.$wire.loadTechnicianRequest(technicianId);
             } catch (e) {
+                console.error('[showTechRequestDetails] $wire error:', e);
                 this.detailsLoading = false;
             }
         },
