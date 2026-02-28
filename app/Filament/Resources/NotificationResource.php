@@ -64,8 +64,8 @@ class NotificationResource extends Resource
                 Tables\Columns\TextColumn::make('read_at')
                     ->label(__('Status'))
                     ->badge()
-                    ->formatStateUsing(fn($s) => $s ? __('Read') : __('Unread'))
-                    ->color(fn($s) => $s ? 'success' : 'warning'),
+                    ->getStateUsing(fn($record) => $record->read_at ? __('Read') : __('Unread'))
+                    ->color(fn($state) => $state === __('Read') ? 'success' : 'warning'),
                 Tables\Columns\TextColumn::make('created_at')->label(__('Created At'))->since()->sortable(),
             ])
             ->filters([
