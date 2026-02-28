@@ -132,7 +132,11 @@ class UserResource extends Resource
                 Tables\Columns\ImageColumn::make('avatar_url')
                     ->label(__('Avatar'))
                     ->circular()
-                    ->defaultImageUrl(fn(User $record) => 'https://ui-avatars.com/api/?name='.urlencode($record->name).'&color=6366f1&background=e0e7ff&size=64')
+                    ->defaultImageUrl(fn(User $record) => match($record->role) {
+                        UserRole::Customer->value   => 'https://ui-avatars.com/api/?name='.urlencode($record->name).'&color=16a34a&background=dcfce7&size=64',
+                        UserRole::Technician->value => 'https://ui-avatars.com/api/?name='.urlencode($record->name).'&color=6366f1&background=e0e7ff&size=64',
+                        default                     => 'https://ui-avatars.com/api/?name='.urlencode($record->name).'&color=dc2626&background=fee2e2&size=64',
+                    })
                     ->toggleable(isToggledHiddenByDefault: true),
                 Tables\Columns\TextColumn::make('name')->label(__('Name'))->searchable(),
                 Tables\Columns\TextColumn::make('phone')->label(__('Phone'))->searchable()->copyable(),

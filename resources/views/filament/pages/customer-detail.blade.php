@@ -18,7 +18,7 @@
                 <img src="{{ $customer->avatar_url }}" alt="{{ $customer->name }}"
                      class="shrink-0 w-20 h-20 rounded-full object-cover shadow-md border-2 border-white dark:border-gray-700">
             @else
-                <div class="shrink-0 w-20 h-20 rounded-full bg-gradient-to-br from-primary-400 to-primary-600 flex items-center justify-center shadow-md">
+                <div class="shrink-0 w-20 h-20 rounded-full bg-gradient-to-br from-green-400 to-green-600 flex items-center justify-center shadow-md">
                     <span class="text-3xl font-bold text-white">
                         {{ strtoupper(mb_substr($customer->name, 0, 1)) }}
                     </span>
