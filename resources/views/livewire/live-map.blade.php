@@ -783,10 +783,10 @@ function liveMap(initialLocations) {
             window.addEventListener('locationsRefreshed', (e) => {
                 (e.detail.locations ?? []).forEach(loc => this.onLocationUpdate(loc));
             });
-            // Only poll when Reverb is not connected
+            // Fallback poll when Reverb/Pusher is not connected (every 5 s)
             setInterval(() => {
                 if (!this.wsConnected) this.$wire.refreshLocations();
-            }, 30000);
+            }, 5000);
         },
     };
 }
