@@ -100,11 +100,11 @@
                             class="text-[10px] text-gray-500 truncate"
                             x-text="tech.active_request?.invoice_number ?? (tech.active_request ? '#' + tech.active_request.id : '')">
                         </span>
-                        {{-- Request details button — x-show keeps event listener always attached
-                             Pass only technician_id (primitive) to avoid x-for scope capture issues --}}
+                        {{-- Request details button --}}
                         <button
+                            type="button"
                             x-show="tech.is_online"
-                            @click.stop="showTechRequestDetails(tech.technician_id)"
+                            @click.stop.prevent="showTechRequestDetails(tech.technician_id)"
                             class="mt-1 w-full inline-flex items-center justify-center gap-1 text-[10px] font-semibold px-2 py-1 rounded-lg bg-primary-600 hover:bg-primary-700 text-white transition"
                         >
                             <svg xmlns="http://www.w3.org/2000/svg" class="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -168,7 +168,10 @@
 
     </div>
 
-    {{-- ─── Request detail modal (centered, outside map, fixed overlay) ────── --}}
+    {{-- ─── Request detail modal ─────────────────────────────────────────────
+         x-teleport moves this element to <body> so position:fixed is always
+         relative to the viewport, unaffected by any parent CSS transform. --}}
+    <template x-teleport="body">
     <div x-show="requestPanelOpen"
          x-transition:enter="transition ease-out duration-200"
          x-transition:enter-start="opacity-0"
@@ -309,6 +312,7 @@
             </template>
         </div>
     </div>
+    </template>{{-- end x-teleport --}}
 
 </div>
 
