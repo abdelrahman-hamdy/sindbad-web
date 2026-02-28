@@ -55,7 +55,7 @@ class InstallationController extends Controller
         $request->validate([
             'product_type' => 'required|string',
             'quantity' => 'nullable|integer|min:1',
-            'is_site_ready' => 'nullable|boolean',
+            'is_site_ready' => 'required|accepted',
             'readiness_details' => 'nullable|array',
             'description' => 'nullable|string',
             'address' => 'required|string',
