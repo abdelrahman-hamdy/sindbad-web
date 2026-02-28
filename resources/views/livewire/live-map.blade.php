@@ -553,17 +553,25 @@ function liveMap(initialLocations) {
 
             if (!tech.is_online || !tech.latitude) return;
 
-            this.map.flyTo([tech.latitude, tech.longitude], 15, { duration: 0.8 });
+            const hasRoute = tech.active_request?.customer_lat && tech.active_request?.customer_lng;
 
-            if (tech.active_request?.customer_lat && tech.active_request?.customer_lng) {
+            if (hasRoute) {
+                // Let drawRoute handle camera positioning via flyToBounds.
+                // Do NOT also call flyTo here — adding a polyline while the map is
+                // mid-flight causes Leaflet to register a broken layer in _layers,
+                // which then crashes every subsequent _moveEnd → _updatePaths cycle.
                 this.updateDestMarker(tech.active_request);
                 await this.drawRoute(
-                    tech.latitude, tech.longitude,
-                    tech.active_request.customer_lat,
-                    tech.active_request.customer_lng,
+                    parseFloat(tech.latitude), parseFloat(tech.longitude),
+                    parseFloat(tech.active_request.customer_lat),
+                    parseFloat(tech.active_request.customer_lng),
                 );
+                this.markers[tech.technician_id]?.openPopup();
             } else {
                 this.clearRouteAndDest();
+                // No route to draw — safe to flyTo directly
+                this.map.flyTo([parseFloat(tech.latitude), parseFloat(tech.longitude)], 15, { duration: 0.8 });
+                this.markers[tech.technician_id]?.openPopup();
             }
         },
 
@@ -605,40 +613,38 @@ function liveMap(initialLocations) {
             toLat   = parseFloat(toLat);   toLng   = parseFloat(toLng);
             if ([fromLat, fromLng, toLat, toLng].some(isNaN)) return;
 
-            // Force Leaflet to recalculate pixel bounds before adding any layer.
-            // Without this, _pxBounds can be undefined when the map container was
-            // not yet visible at initialisation time, causing a TypeError in
-            // Polyline._clipPoints → Bounds.intersects (reading 'x').
-            this.map.invalidateSize({ animate: false });
-
-            // Yield one microtask so the invalidation settles before layer add
-            await new Promise(resolve => setTimeout(resolve, 0));
-            if (!this.map) return;
+            // CRITICAL: stop any in-progress flyTo/flyToBounds animation before adding
+            // a polyline layer.  When the map is mid-flight Leaflet registers the layer
+            // in _layers BEFORE onAdd throws (Bounds.x TypeError), leaving a broken
+            // layer that crashes every subsequent _moveEnd → _updatePaths cycle.
+            this.map.stop();
 
             this.routeLoading = true;
             const straightLine = () => L.polyline(
                 [[fromLat, fromLng], [toLat, toLng]],
                 { color: '#3b82f6', weight: 3, opacity: 0.6, dashArray: '10 8' }
             );
+
+            const addAndFit = (polyline) => {
+                polyline.addTo(this.map);
+                this.routePolyline = polyline;
+                const bounds = polyline.getBounds();
+                if (bounds.isValid()) {
+                    this.map.flyToBounds(bounds, { padding: [80, 80], duration: 0.8 });
+                }
+            };
+
             try {
                 const pts = await this.fetchOSRMRoute(fromLat, fromLng, toLat, toLng);
-                this.routePolyline = (pts
+                addAndFit(pts
                     ? L.polyline(pts, { color: '#3b82f6', weight: 4, opacity: 0.75 })
                     : straightLine()
-                ).addTo(this.map);
-                const bounds = this.routePolyline.getBounds();
-                if (bounds.isValid()) {
-                    this.map.flyToBounds(bounds, { padding: [80, 80], duration: 0.6 });
-                }
-            } catch (_) {
+                );
+            } catch (e) {
                 try {
-                    this.routePolyline = straightLine().addTo(this.map);
-                    const bounds = this.routePolyline.getBounds();
-                    if (bounds.isValid()) {
-                        this.map.flyToBounds(bounds, { padding: [80, 80], duration: 0.6 });
-                    }
+                    addAndFit(straightLine());
                 } catch (e2) {
-                    console.warn('drawRoute: could not add polyline', e2);
+                    console.warn('drawRoute: fallback polyline failed', e2);
                 }
             }
             this.routeLoading = false;
