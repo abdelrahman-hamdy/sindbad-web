@@ -85,24 +85,41 @@ class NotificationResource extends Resource
                             ->options([
                                 'customers'   => __('All Customers'),
                                 'technicians' => __('All Technicians'),
-                                'specific'    => __('Specific User'),
+                                'custom'      => __('Custom Users'),
                             ])
                             ->required()
                             ->live(),
-                        Forms\Components\Select::make('user_id')
-                            ->label(__('Select User'))
-                            ->options(User::pluck('name', 'id'))
+                        Forms\Components\Select::make('user_ids')
+                            ->label(__('Select Users'))
+                            ->options(
+                                User::orderBy('name')
+                                    ->get(['id', 'name', 'phone', 'role'])
+                                    ->mapWithKeys(fn($u) => [
+                                        $u->id => "{$u->name} · {$u->phone} · {$u->role}",
+                                    ])
+                            )
+                            ->multiple()
                             ->searchable()
-                            ->visible(fn(Get $get) => $get('recipient_type') === 'specific'),
+                            ->required()
+                            ->visible(fn(Get $get) => $get('recipient_type') === 'custom'),
                         Forms\Components\TextInput::make('title')->label(__('Title'))->required(),
                         Forms\Components\Textarea::make('body')->label(__('Message'))->required(),
                     ])
                     ->action(function (array $data) {
                         $service = app(NotificationService::class);
+
+                        if ($data['recipient_type'] === 'custom') {
+                            $users = User::whereIn('id', $data['user_ids'] ?? [])->get();
+                            $users->each(fn($user) => $service->notifyUser($user, $data['title'], $data['body'], ['type' => 'custom']));
+                            FilamentNotification::make()
+                                ->title(__('Notification sent to :count users', ['count' => $users->count()]))
+                                ->success()->send();
+                            return;
+                        }
+
                         match ($data['recipient_type']) {
-                            'customers' => $service->notifyRole('customer', $data['title'], $data['body'], ['type' => 'broadcast']),
+                            'customers'   => $service->notifyRole('customer', $data['title'], $data['body'], ['type' => 'broadcast']),
                             'technicians' => $service->notifyRole('technician', $data['title'], $data['body'], ['type' => 'broadcast']),
-                            'specific' => $service->notifyUser(User::find($data['user_id']), $data['title'], $data['body'], ['type' => 'custom']),
                         };
                         FilamentNotification::make()->title(__('Notification sent'))->success()->send();
                     }),
