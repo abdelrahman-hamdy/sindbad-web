@@ -91,6 +91,20 @@ class ViewServiceRequest extends ViewRecord
         ];
     }
 
+    public function deleteTechnicianImage(int $mediaId): void
+    {
+        $record = $this->getRecord();
+        $media  = $record->getMedia('technician_images')->firstWhere('id', $mediaId);
+
+        if (! $media) {
+            Notification::make()->title(__('Image not found'))->danger()->send();
+            return;
+        }
+
+        $media->delete();
+        Notification::make()->title(__('Image deleted'))->success()->send();
+    }
+
     protected function getViewData(): array
     {
         $record = $this->getRecord()->load(['user', 'technician', 'rating', 'activities.causer']);

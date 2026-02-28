@@ -205,7 +205,15 @@
             </div>
 
             {{-- Customer Images ──────────────────────────────────────────── --}}
-            <div class="bg-white dark:bg-gray-800 rounded-xl shadow p-5">
+            <div class="bg-white dark:bg-gray-800 rounded-xl shadow p-5"
+                 x-data="{
+                     open: false, idx: 0,
+                     urls: {{ Js::from($customerImages->map->getUrl()->values()) }},
+                     show(i)  { this.idx = i; this.open = true; },
+                     prev()   { this.idx = (this.idx - 1 + this.urls.length) % this.urls.length; },
+                     next()   { this.idx = (this.idx + 1) % this.urls.length; },
+                 }"
+                 @keydown.escape.window="open = false">
                 <div class="flex items-center justify-between mb-4">
                     <div class="flex items-center gap-2">
                         <svg class="w-4 h-4 text-primary-600 dark:text-primary-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -219,12 +227,41 @@
                 </div>
                 @if ($customerImages->isNotEmpty())
                     <div class="grid grid-cols-4 gap-2">
-                        @foreach ($customerImages as $image)
-                            <a href="{{ $image->getUrl() }}" target="_blank"
-                               class="block aspect-square rounded-xl overflow-hidden bg-gray-100 dark:bg-gray-700 hover:opacity-80 transition ring-2 ring-transparent hover:ring-primary-400">
+                        @foreach ($customerImages as $i => $image)
+                            <button @click="show({{ $i }})"
+                                    class="block aspect-square rounded-xl overflow-hidden bg-gray-100 dark:bg-gray-700 hover:opacity-80 transition ring-2 ring-transparent hover:ring-primary-400 cursor-zoom-in w-full">
                                 <img src="{{ $image->getUrl() }}" alt="{{ __('Customer image') }}" class="w-full h-full object-cover"/>
-                            </a>
+                            </button>
                         @endforeach
+                    </div>
+
+                    {{-- Lightbox --}}
+                    <div x-show="open"
+                         x-transition:enter="transition ease-out duration-200"
+                         x-transition:enter-start="opacity-0"
+                         x-transition:enter-end="opacity-100"
+                         x-transition:leave="transition ease-in duration-150"
+                         x-transition:leave-start="opacity-100"
+                         x-transition:leave-end="opacity-0"
+                         style="display:none"
+                         class="fixed inset-0 z-50 flex items-center justify-center bg-black/85"
+                         @click.self="open = false">
+                        <button @click.stop="prev()"
+                                class="absolute left-4 top-1/2 -translate-y-1/2 p-2 rounded-full bg-white/10 hover:bg-white/25 text-white transition">
+                            <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"/></svg>
+                        </button>
+                        <img :src="urls[idx]" class="max-h-[88vh] max-w-[88vw] rounded-xl shadow-2xl object-contain select-none"/>
+                        <button @click.stop="next()"
+                                class="absolute right-4 top-1/2 -translate-y-1/2 p-2 rounded-full bg-white/10 hover:bg-white/25 text-white transition">
+                            <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/></svg>
+                        </button>
+                        <button @click.stop="open = false"
+                                class="absolute top-4 right-4 p-2 rounded-full bg-white/10 hover:bg-white/25 text-white transition">
+                            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
+                        </button>
+                        <div class="absolute bottom-4 left-1/2 -translate-x-1/2 text-white/70 text-sm select-none">
+                            <span x-text="idx + 1"></span> / {{ $customerImages->count() }}
+                        </div>
                     </div>
                 @else
                     <div class="flex flex-col items-center justify-center py-8 rounded-xl bg-gray-50 dark:bg-gray-700/50 border border-dashed border-gray-200 dark:border-gray-700">
@@ -237,7 +274,15 @@
             </div>
 
             {{-- Technician Images ────────────────────────────────────────── --}}
-            <div class="bg-white dark:bg-gray-800 rounded-xl shadow p-5">
+            <div class="bg-white dark:bg-gray-800 rounded-xl shadow p-5"
+                 x-data="{
+                     open: false, idx: 0,
+                     urls: {{ Js::from($technicianImages->map->getUrl()->values()) }},
+                     show(i)  { this.idx = i; this.open = true; },
+                     prev()   { this.idx = (this.idx - 1 + this.urls.length) % this.urls.length; },
+                     next()   { this.idx = (this.idx + 1) % this.urls.length; },
+                 }"
+                 @keydown.escape.window="open = false">
                 <div class="flex items-center justify-between mb-4">
                     <div class="flex items-center gap-2">
                         <svg class="w-4 h-4 text-primary-600 dark:text-primary-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -251,12 +296,50 @@
                 </div>
                 @if ($technicianImages->isNotEmpty())
                     <div class="grid grid-cols-4 gap-2">
-                        @foreach ($technicianImages as $image)
-                            <a href="{{ $image->getUrl() }}" target="_blank"
-                               class="block aspect-square rounded-xl overflow-hidden bg-gray-100 dark:bg-gray-700 hover:opacity-80 transition ring-2 ring-transparent hover:ring-primary-400">
-                                <img src="{{ $image->getUrl() }}" alt="{{ __('Technician image') }}" class="w-full h-full object-cover"/>
-                            </a>
+                        @foreach ($technicianImages as $i => $image)
+                            <div class="relative aspect-square group">
+                                <button @click="show({{ $i }})"
+                                        class="block w-full h-full rounded-xl overflow-hidden bg-gray-100 dark:bg-gray-700 hover:opacity-80 transition ring-2 ring-transparent hover:ring-primary-400 cursor-zoom-in">
+                                    <img src="{{ $image->getUrl() }}" alt="{{ __('Technician image') }}" class="w-full h-full object-cover"/>
+                                </button>
+                                {{-- Delete button (admin only) --}}
+                                <button wire:click="deleteTechnicianImage({{ $image->id }})"
+                                        wire:confirm="{{ __('Delete this image? This cannot be undone.') }}"
+                                        class="absolute top-1.5 left-1.5 p-1 rounded-full bg-red-500 hover:bg-red-600 text-white shadow opacity-0 group-hover:opacity-100 transition-opacity z-10"
+                                        title="{{ __('Delete image') }}">
+                                    <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M6 18L18 6M6 6l12 12"/></svg>
+                                </button>
+                            </div>
                         @endforeach
+                    </div>
+
+                    {{-- Lightbox --}}
+                    <div x-show="open"
+                         x-transition:enter="transition ease-out duration-200"
+                         x-transition:enter-start="opacity-0"
+                         x-transition:enter-end="opacity-100"
+                         x-transition:leave="transition ease-in duration-150"
+                         x-transition:leave-start="opacity-100"
+                         x-transition:leave-end="opacity-0"
+                         style="display:none"
+                         class="fixed inset-0 z-50 flex items-center justify-center bg-black/85"
+                         @click.self="open = false">
+                        <button @click.stop="prev()"
+                                class="absolute left-4 top-1/2 -translate-y-1/2 p-2 rounded-full bg-white/10 hover:bg-white/25 text-white transition">
+                            <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"/></svg>
+                        </button>
+                        <img :src="urls[idx]" class="max-h-[88vh] max-w-[88vw] rounded-xl shadow-2xl object-contain select-none"/>
+                        <button @click.stop="next()"
+                                class="absolute right-4 top-1/2 -translate-y-1/2 p-2 rounded-full bg-white/10 hover:bg-white/25 text-white transition">
+                            <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/></svg>
+                        </button>
+                        <button @click.stop="open = false"
+                                class="absolute top-4 right-4 p-2 rounded-full bg-white/10 hover:bg-white/25 text-white transition">
+                            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
+                        </button>
+                        <div class="absolute bottom-4 left-1/2 -translate-x-1/2 text-white/70 text-sm select-none">
+                            <span x-text="idx + 1"></span> / {{ $technicianImages->count() }}
+                        </div>
                     </div>
                 @else
                     <div class="flex flex-col items-center justify-center py-8 rounded-xl bg-gray-50 dark:bg-gray-700/50 border border-dashed border-gray-200 dark:border-gray-700">
