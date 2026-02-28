@@ -207,13 +207,13 @@
             {{-- Customer Images ──────────────────────────────────────────── --}}
             <div class="bg-white dark:bg-gray-800 rounded-xl shadow p-5"
                  x-data="{
-                     open: false, idx: 0,
+                     idx: 0,
                      urls: {{ Js::from($customerImages->map->getUrl()->values()) }},
-                     show(i)  { this.idx = i; this.open = true; },
+                     show(i)  { this.idx = i; this.$refs.dialog.showModal(); },
+                     hide()   { this.$refs.dialog.close(); },
                      prev()   { this.idx = (this.idx - 1 + this.urls.length) % this.urls.length; },
                      next()   { this.idx = (this.idx + 1) % this.urls.length; },
-                 }"
-                 @keydown.escape.window="open = false">
+                 }">
                 <div class="flex items-center justify-between mb-4">
                     <div class="flex items-center gap-2">
                         <svg class="w-4 h-4 text-primary-600 dark:text-primary-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -235,36 +235,29 @@
                         @endforeach
                     </div>
 
-                    {{-- Lightbox --}}
-                    <template x-teleport="body">
-                    <div x-show="open"
-                         x-transition:enter="transition ease-out duration-200"
-                         x-transition:enter-start="opacity-0"
-                         x-transition:enter-end="opacity-100"
-                         x-transition:leave="transition ease-in duration-150"
-                         x-transition:leave-start="opacity-100"
-                         x-transition:leave-end="opacity-0"
-                         style="display:none"
-                         class="fixed inset-0 z-50 flex items-center justify-center bg-black/85"
-                         @click.self="open = false">
-                        <button @click.stop="prev()"
-                                class="absolute left-4 top-1/2 -translate-y-1/2 p-2 rounded-full bg-white/10 hover:bg-white/25 text-white transition">
-                            <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"/></svg>
-                        </button>
-                        <img :src="urls[idx]" class="max-h-[88vh] max-w-[88vw] rounded-xl shadow-2xl object-contain select-none"/>
-                        <button @click.stop="next()"
-                                class="absolute right-4 top-1/2 -translate-y-1/2 p-2 rounded-full bg-white/10 hover:bg-white/25 text-white transition">
-                            <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/></svg>
-                        </button>
-                        <button @click.stop="open = false"
-                                class="absolute top-4 right-4 p-2 rounded-full bg-white/10 hover:bg-white/25 text-white transition">
-                            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
-                        </button>
-                        <div class="absolute bottom-4 left-1/2 -translate-x-1/2 text-white/70 text-sm select-none">
-                            <span x-text="idx + 1"></span> / {{ $customerImages->count() }}
+                    {{-- Lightbox dialog – uses browser top-layer, immune to stacking contexts --}}
+                    <dialog x-ref="dialog"
+                            @click.self="hide()"
+                            style="padding:0;margin:0;border:none;outline:none;background:rgba(0,0,0,0.85);width:100vw;height:100dvh;max-width:100vw;max-height:100dvh;">
+                        <div class="w-full h-full flex items-center justify-center relative" @click.self="hide()">
+                            <button @click.stop="prev()"
+                                    class="absolute left-4 top-1/2 -translate-y-1/2 p-2 rounded-full bg-white/10 hover:bg-white/25 text-white transition">
+                                <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"/></svg>
+                            </button>
+                            <img :src="urls[idx]" class="max-h-[88vh] max-w-[88vw] rounded-xl shadow-2xl object-contain select-none"/>
+                            <button @click.stop="next()"
+                                    class="absolute right-4 top-1/2 -translate-y-1/2 p-2 rounded-full bg-white/10 hover:bg-white/25 text-white transition">
+                                <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/></svg>
+                            </button>
+                            <button @click.stop="hide()"
+                                    class="absolute top-4 right-4 p-2 rounded-full bg-white/10 hover:bg-white/25 text-white transition">
+                                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
+                            </button>
+                            <div class="absolute bottom-4 left-1/2 -translate-x-1/2 text-white/70 text-sm select-none">
+                                <span x-text="idx + 1"></span> / {{ $customerImages->count() }}
+                            </div>
                         </div>
-                    </div>
-                    </template>
+                    </dialog>
                 @else
                     <div class="flex flex-col items-center justify-center py-8 rounded-xl bg-gray-50 dark:bg-gray-700/50 border border-dashed border-gray-200 dark:border-gray-700">
                         <svg class="w-8 h-8 text-gray-300 dark:text-gray-600 mb-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -278,13 +271,13 @@
             {{-- Technician Images ────────────────────────────────────────── --}}
             <div class="bg-white dark:bg-gray-800 rounded-xl shadow p-5"
                  x-data="{
-                     open: false, idx: 0,
+                     idx: 0,
                      urls: {{ Js::from($technicianImages->map->getUrl()->values()) }},
-                     show(i)  { this.idx = i; this.open = true; },
+                     show(i)  { this.idx = i; this.$refs.dialog.showModal(); },
+                     hide()   { this.$refs.dialog.close(); },
                      prev()   { this.idx = (this.idx - 1 + this.urls.length) % this.urls.length; },
                      next()   { this.idx = (this.idx + 1) % this.urls.length; },
-                 }"
-                 @keydown.escape.window="open = false">
+                 }">
                 <div class="flex items-center justify-between mb-4">
                     <div class="flex items-center gap-2">
                         <svg class="w-4 h-4 text-primary-600 dark:text-primary-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -315,36 +308,29 @@
                         @endforeach
                     </div>
 
-                    {{-- Lightbox --}}
-                    <template x-teleport="body">
-                    <div x-show="open"
-                         x-transition:enter="transition ease-out duration-200"
-                         x-transition:enter-start="opacity-0"
-                         x-transition:enter-end="opacity-100"
-                         x-transition:leave="transition ease-in duration-150"
-                         x-transition:leave-start="opacity-100"
-                         x-transition:leave-end="opacity-0"
-                         style="display:none"
-                         class="fixed inset-0 z-50 flex items-center justify-center bg-black/85"
-                         @click.self="open = false">
-                        <button @click.stop="prev()"
-                                class="absolute left-4 top-1/2 -translate-y-1/2 p-2 rounded-full bg-white/10 hover:bg-white/25 text-white transition">
-                            <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"/></svg>
-                        </button>
-                        <img :src="urls[idx]" class="max-h-[88vh] max-w-[88vw] rounded-xl shadow-2xl object-contain select-none"/>
-                        <button @click.stop="next()"
-                                class="absolute right-4 top-1/2 -translate-y-1/2 p-2 rounded-full bg-white/10 hover:bg-white/25 text-white transition">
-                            <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/></svg>
-                        </button>
-                        <button @click.stop="open = false"
-                                class="absolute top-4 right-4 p-2 rounded-full bg-white/10 hover:bg-white/25 text-white transition">
-                            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
-                        </button>
-                        <div class="absolute bottom-4 left-1/2 -translate-x-1/2 text-white/70 text-sm select-none">
-                            <span x-text="idx + 1"></span> / {{ $technicianImages->count() }}
+                    {{-- Lightbox dialog – uses browser top-layer, immune to stacking contexts --}}
+                    <dialog x-ref="dialog"
+                            @click.self="hide()"
+                            style="padding:0;margin:0;border:none;outline:none;background:rgba(0,0,0,0.85);width:100vw;height:100dvh;max-width:100vw;max-height:100dvh;">
+                        <div class="w-full h-full flex items-center justify-center relative" @click.self="hide()">
+                            <button @click.stop="prev()"
+                                    class="absolute left-4 top-1/2 -translate-y-1/2 p-2 rounded-full bg-white/10 hover:bg-white/25 text-white transition">
+                                <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"/></svg>
+                            </button>
+                            <img :src="urls[idx]" class="max-h-[88vh] max-w-[88vw] rounded-xl shadow-2xl object-contain select-none"/>
+                            <button @click.stop="next()"
+                                    class="absolute right-4 top-1/2 -translate-y-1/2 p-2 rounded-full bg-white/10 hover:bg-white/25 text-white transition">
+                                <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/></svg>
+                            </button>
+                            <button @click.stop="hide()"
+                                    class="absolute top-4 right-4 p-2 rounded-full bg-white/10 hover:bg-white/25 text-white transition">
+                                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
+                            </button>
+                            <div class="absolute bottom-4 left-1/2 -translate-x-1/2 text-white/70 text-sm select-none">
+                                <span x-text="idx + 1"></span> / {{ $technicianImages->count() }}
+                            </div>
                         </div>
-                    </div>
-                    </template>
+                    </dialog>
                 @else
                     <div class="flex flex-col items-center justify-center py-8 rounded-xl bg-gray-50 dark:bg-gray-700/50 border border-dashed border-gray-200 dark:border-gray-700">
                         <svg class="w-8 h-8 text-gray-300 dark:text-gray-600 mb-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
