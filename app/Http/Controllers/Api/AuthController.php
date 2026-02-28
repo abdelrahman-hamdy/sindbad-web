@@ -241,7 +241,7 @@ class AuthController extends Controller
         $user = $request->user();
         $file = $request->file('avatar');
         $path = $file->store('avatars', 'public');
-        $url  = Storage::url($path);
+        $url  = asset('storage/' . $path);
 
         $user->update(['avatar_url' => $url]);
 
