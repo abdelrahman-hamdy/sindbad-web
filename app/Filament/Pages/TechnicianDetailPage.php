@@ -7,7 +7,9 @@ use App\Enums\UserRole;
 use App\Models\Rating;
 use App\Models\Request;
 use App\Models\User;
+use App\Services\NotificationService;
 use Filament\Actions\Action;
+use Filament\Forms;
 use Filament\Notifications\Notification;
 use Filament\Panel;
 use Filament\Pages\Page;
@@ -40,7 +42,7 @@ class TechnicianDetailPage extends Page
 
     public function getTitle(): string|Htmlable
     {
-        return __('Technician') . ': ' . $this->technician->name;
+        return $this->technician->name;
     }
 
     protected function getHeaderActions(): array
@@ -62,6 +64,37 @@ class TechnicianDetailPage extends Page
                         ->title($this->technician->is_active ? __('Technician activated') : __('Technician deactivated'))
                         ->success()
                         ->send();
+                }),
+            Action::make('notify')
+                ->label(__('Notify'))
+                ->icon('heroicon-o-bell')
+                ->form([
+                    Forms\Components\TextInput::make('title')->label(__('Title'))->required(),
+                    Forms\Components\Textarea::make('body')->label(__('Message'))->required(),
+                ])
+                ->action(function (array $data) {
+                    app(NotificationService::class)->notifyUser(
+                        $this->technician,
+                        $data['title'],
+                        $data['body'],
+                        ['type' => 'custom']
+                    );
+                    Notification::make()->title(__('Notification sent'))->success()->send();
+                }),
+            Action::make('edit')
+                ->label(__('Edit'))
+                ->icon('heroicon-o-pencil')
+                ->url(fn() => \App\Filament\Resources\UserResource::getUrl('edit', ['record' => $this->technician->id])),
+            Action::make('delete')
+                ->label(__('Delete'))
+                ->icon('heroicon-o-trash')
+                ->color('danger')
+                ->requiresConfirmation()
+                ->modalHeading(__('Delete Technician?'))
+                ->modalDescription(fn() => __('Are you sure you want to delete :name? This action cannot be undone.', ['name' => $this->technician->name]))
+                ->action(function () {
+                    $this->technician->delete();
+                    $this->redirect(\App\Filament\Resources\UserResource::getUrl('index'));
                 }),
         ];
     }
