@@ -430,7 +430,15 @@ function liveMap(initialLocations) {
         onLocationUpdate(data) {
             const idx = this.locations.findIndex(l => l.technician_id === data.technician_id);
             if (idx >= 0) {
-                this.locations[idx] = { ...this.locations[idx], ...data };
+                // Preserve active_request from existing entry when broadcast omits it —
+                // location broadcasts only carry GPS fields, not request data
+                this.locations[idx] = {
+                    ...this.locations[idx],
+                    ...data,
+                    active_request: data.active_request !== undefined
+                        ? data.active_request
+                        : this.locations[idx].active_request,
+                };
             } else {
                 this.locations.push(data);
             }
@@ -439,12 +447,12 @@ function liveMap(initialLocations) {
             // If this is the focused technician, redraw the route live
             if (this.focusedTechId === data.technician_id) {
                 if (data.is_online && data.latitude) {
-                    const activeReq = data.active_request ?? this.locations.find(l => l.technician_id === data.technician_id)?.active_request;
+                    // Use the merged location (with preserved active_request)
+                    const activeReq = this.locations[idx]?.active_request;
                     if (activeReq?.customer_lat && activeReq?.customer_lng) {
                         this.drawRoute(parseFloat(data.latitude), parseFloat(data.longitude), activeReq.customer_lat, activeReq.customer_lng);
-                    } else {
-                        this.drawRoute(parseFloat(data.latitude), parseFloat(data.longitude), null, null);
                     }
+                    // Don't clear route on update when no customer coords — keep existing
                 } else {
                     this.clearFocus();
                 }
@@ -600,13 +608,28 @@ function liveMap(initialLocations) {
                     this.routePolyline = L.polyline(pts, {
                         color: '#3b82f6', weight: 4, opacity: 0.75,
                     }).addTo(this.map);
-                    // Re-fit only when bounds are valid (avoids Bounds.js crash on empty routes)
-                    const bounds = this.routePolyline.getBounds();
-                    if (bounds.isValid()) {
-                        this.map.flyToBounds(bounds, { padding: [80, 80], duration: 0.6 });
-                    }
+                } else {
+                    // OSRM returned no route (e.g. cross-country) — draw straight line
+                    this.routePolyline = L.polyline(
+                        [[fromLat, fromLng], [toLat, toLng]],
+                        { color: '#3b82f6', weight: 3, opacity: 0.6, dashArray: '10 8' }
+                    ).addTo(this.map);
                 }
-            } catch (_) { /* route unavailable, map already focused */ }
+                const bounds = this.routePolyline.getBounds();
+                if (bounds.isValid()) {
+                    this.map.flyToBounds(bounds, { padding: [80, 80], duration: 0.6 });
+                }
+            } catch (_) {
+                // Network error fallback — straight dashed line
+                this.routePolyline = L.polyline(
+                    [[fromLat, fromLng], [toLat, toLng]],
+                    { color: '#3b82f6', weight: 3, opacity: 0.6, dashArray: '10 8' }
+                ).addTo(this.map);
+                const bounds = this.routePolyline.getBounds();
+                if (bounds.isValid()) {
+                    this.map.flyToBounds(bounds, { padding: [80, 80], duration: 0.6 });
+                }
+            }
             this.routeLoading = false;
         },
 
@@ -645,10 +668,36 @@ function liveMap(initialLocations) {
         },
 
         buildDestPopupContent(req) {
-            return `<div dir="rtl" style="font-family:inherit;min-width:160px">
-                <strong>${req.customer_name ?? 'عميل'}</strong><br>
-                <span style="font-size:12px">${req.invoice_number ?? '#' + req.id}</span><br>
-                <span style="font-size:11px;color:#6b7280">${req.address ?? ''}</span>
+            const statusLabel = req.status === 'on_way' ? 'في الطريق' : 'قيد التنفيذ';
+            const statusBg    = req.status === 'on_way' ? '#3b82f6' : '#f59e0b';
+            const invoice     = req.invoice_number ?? ('#' + req.id);
+            const phone       = req.customer_phone
+                ? `<a href="tel:${req.customer_phone}"
+                       style="color:#3b82f6;text-decoration:none;font-size:12px;display:flex;align-items:center;gap:5px;">
+                       <span>📞</span><span>${req.customer_phone}</span>
+                   </a>`
+                : '';
+            const address = req.address
+                ? `<div style="display:flex;align-items:flex-start;gap:5px;font-size:11px;color:#6b7280;">
+                       <span style="flex-shrink:0;line-height:1.5;">📍</span>
+                       <span>${req.address}</span>
+                   </div>`
+                : '';
+
+            return `<div dir="rtl" style="font-family:system-ui,sans-serif;min-width:210px;max-width:270px;overflow:hidden;">
+                <div style="background:${statusBg};padding:8px 12px;display:flex;align-items:center;justify-content:space-between;gap:8px;">
+                    <span style="font-size:13px;font-weight:700;color:white;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">
+                        ${req.customer_name ?? 'عميل'}
+                    </span>
+                    <span style="flex-shrink:0;font-size:10px;font-weight:600;color:${statusBg};background:white;padding:2px 8px;border-radius:999px;">
+                        ${statusLabel}
+                    </span>
+                </div>
+                <div style="padding:8px 12px;display:flex;flex-direction:column;gap:5px;">
+                    <div style="font-size:11px;color:#9ca3af;font-weight:500;">🧾 ${invoice}</div>
+                    ${phone}
+                    ${address}
+                </div>
             </div>`;
         },
 
