@@ -73,11 +73,6 @@ class UserResource extends Resource
                     ->hidden(fn(string $operation, Get $get) => $operation === 'edit' && $get('role') === UserRole::Admin->value)
                     ->disabled(fn(string $operation, Get $get) => $operation === 'edit' && $get('role') === UserRole::Customer->value)
                     ->helperText(fn(string $operation, Get $get) => $operation === 'edit' && $get('role') === UserRole::Customer->value ? __('Odoo ID cannot be changed after account creation.') : null),
-                Forms\Components\Toggle::make('is_active')
-                    ->label(__('Active'))
-                    ->default(false)
-                    ->disabled(fn(string $operation, ?User $record) => $operation === 'edit' && $record?->id === auth()->id())
-                    ->helperText(fn(string $operation, ?User $record) => $operation === 'edit' && $record?->id === auth()->id() ? __('You cannot change the active status of your own account.') : null),
                 Forms\Components\TextInput::make('password')
                     ->password()
                     ->nullable()
@@ -95,6 +90,11 @@ class UserResource extends Resource
                     ->label(__('Confirm New Password'))
                     ->dehydrated(false)
                     ->hidden(fn(Get $get) => $get('role') === UserRole::Customer->value),
+                Forms\Components\Toggle::make('is_active')
+                    ->label(__('Active'))
+                    ->default(false)
+                    ->disabled(fn(string $operation, ?User $record) => $operation === 'edit' && $record?->id === auth()->id())
+                    ->helperText(fn(string $operation, ?User $record) => $operation === 'edit' && $record?->id === auth()->id() ? __('You cannot change the active status of your own account.') : null),
             ])->columns(2),
 
             Section::make(__('Manual Orders'))
