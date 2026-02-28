@@ -102,8 +102,8 @@
                                 x-text="tech.active_request.invoice_number ?? '#' + tech.active_request.id">
                             </span>
                         </template>
-                        {{-- Request details button — only for online techs with an active request --}}
-                        <template x-if="tech.is_online && tech.active_request">
+                        {{-- Request details button — visible for all online techs --}}
+                        <template x-if="tech.is_online">
                             <button
                                 @click.stop="showTechRequestDetails(tech)"
                                 class="mt-1 w-full inline-flex items-center justify-center gap-1 text-[10px] font-semibold px-2 py-1 rounded-lg bg-primary-600 hover:bg-primary-700 text-white transition"
@@ -222,13 +222,23 @@
             </div>
 
             {{-- Modal body: loading --}}
-            <template x-if="!selectedTechRequest">
+            <template x-if="!selectedTechRequest && detailsLoading">
                 <div class="flex flex-col items-center justify-center py-12 text-gray-400 dark:text-gray-500">
                     <svg class="animate-spin w-8 h-8 text-primary-500 mb-3" fill="none" viewBox="0 0 24 24">
                         <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"/>
                         <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8z"/>
                     </svg>
                     <span class="text-sm">جاري التحميل…</span>
+                </div>
+            </template>
+
+            {{-- Modal body: no active request --}}
+            <template x-if="!selectedTechRequest && !detailsLoading">
+                <div class="flex flex-col items-center justify-center py-12 text-gray-400 dark:text-gray-500 gap-3">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="w-12 h-12 opacity-30" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"/>
+                    </svg>
+                    <span class="text-sm font-medium">لا يوجد طلب نشط</span>
                 </div>
             </template>
 
@@ -336,6 +346,7 @@ function liveMap(initialLocations) {
         _tick:         0,
         selectedTechRequest: null,
         requestPanelOpen: false,
+        detailsLoading: false,
 
         // ── Computed ─────────────────────────────────────────────────────────
         get onlineCount()  { return this.locations.filter(l => l.is_online).length; },
@@ -352,10 +363,13 @@ function liveMap(initialLocations) {
             this.startTickTimer();
             this.startFallbackPoller();
             window.addEventListener('technicianRequestLoaded', (e) => {
-                // Only overwrite if Livewire returned real data (don't null out on no-request techs)
-                if (e.detail.active_request) {
-                    this.selectedTechRequest = e.detail.active_request;
-                }
+                // Livewire 3 named-arg dispatch → e.detail.active_request
+                // Livewire 3 positional-array dispatch → e.detail[0].active_request
+                const payload = (e.detail?.active_request !== undefined)
+                    ? e.detail
+                    : (e.detail?.[0] ?? {});
+                this.selectedTechRequest = payload.active_request ?? null;
+                this.detailsLoading = false;
                 this.requestPanelOpen = true;
             });
         },
@@ -515,9 +529,10 @@ function liveMap(initialLocations) {
         async focusTechnician(tech) {
             if (!this.map) return;
 
-            // Toggle off if already focused
+            // Toggle off if already focused — but don't close modal (user may have just
+            // clicked a child button; use the Clear Route button to explicitly clear focus)
             if (this.focusedTechId === tech.technician_id) {
-                this.clearFocus();
+                if (!this.requestPanelOpen) this.clearFocus();
                 return;
             }
 
@@ -542,10 +557,15 @@ function liveMap(initialLocations) {
 
         // ── "تفاصيل الطلب" button: open detail panel for this technician ────────
         showTechRequestDetails(tech) {
-            // Show immediately with already-loaded data; Livewire refreshes in background
-            this.selectedTechRequest = tech.active_request;
+            // Show cached data immediately; Livewire refreshes in background
+            this.selectedTechRequest = tech.active_request ?? null;
+            this.detailsLoading = !tech.active_request; // show spinner only if no cached data
             this.requestPanelOpen = true;
-            this.$wire.loadTechnicianRequest(tech.technician_id);
+            try {
+                this.$wire.loadTechnicianRequest(tech.technician_id);
+            } catch (e) {
+                this.detailsLoading = false;
+            }
         },
 
         // ── Fly to customer location ──────────────────────────────────────────

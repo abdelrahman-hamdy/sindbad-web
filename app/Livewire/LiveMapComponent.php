@@ -89,9 +89,9 @@ class LiveMapComponent extends Component
             ->latest('updated_at')
             ->first();
 
-        $this->dispatch('technicianRequestLoaded', [
-            'technician_id'  => $technicianId,
-            'active_request' => $req ? [
+        $this->dispatch('technicianRequestLoaded',
+            technician_id: $technicianId,
+            active_request: $req ? [
                 'id'             => $req->id,
                 'status'         => $req->status->value,
                 'type'           => $req->type->value,
@@ -104,7 +104,7 @@ class LiveMapComponent extends Component
                 'customer_phone' => $req->user?->phone,
                 'admin_url'      => url('/admin/' . ($req->type->value === 'service' ? 'service' : 'installation') . '-requests/' . $req->id),
             ] : null,
-        ]);
+        );
     }
 
     private function loadLocations(): void
