@@ -186,15 +186,9 @@
         <div @click="requestPanelOpen = false"
              style="position:absolute;inset:0;background:rgba(0,0,0,0.5);backdrop-filter:blur(4px);cursor:pointer;"></div>
 
-        {{-- Modal card — max-width 600px, centered via flex parent --}}
+        {{-- Modal card — absolutely centered, max-width 600px --}}
         <div x-show="requestPanelOpen"
-             x-transition:enter="transition ease-out duration-200"
-             x-transition:enter-start="opacity-0 scale-95 translate-y-2"
-             x-transition:enter-end="opacity-100 scale-100 translate-y-0"
-             x-transition:leave="transition ease-in duration-150"
-             x-transition:leave-start="opacity-100 scale-100 translate-y-0"
-             x-transition:leave-end="opacity-0 scale-95 translate-y-2"
-             style="position:relative;background:white;border-radius:1rem;box-shadow:0 25px 50px rgba(0,0,0,0.25);width:100%;max-width:600px;z-index:1;overflow:hidden;"
+             style="position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);width:calc(100% - 2rem);max-width:600px;background:white;border-radius:1rem;box-shadow:0 25px 50px rgba(0,0,0,0.3);z-index:2;overflow:hidden;"
              dir="rtl"
              @click.stop>
 
@@ -373,7 +367,12 @@ function liveMap(initialLocations) {
                 const payload = (e.detail?.active_request !== undefined)
                     ? e.detail
                     : (e.detail?.[0] ?? {});
-                this.selectedTechRequest = payload.active_request ?? null;
+                // Only use server data when we have nothing cached — prevents the server
+                // returning a different request (e.g. in_progress) from overwriting the
+                // on_way request the user explicitly clicked
+                if (!this.selectedTechRequest) {
+                    this.selectedTechRequest = payload.active_request ?? null;
+                }
                 this.detailsLoading = false;
                 this.requestPanelOpen = true;
             });
