@@ -452,5 +452,15 @@
     "Amount Due": "المبلغ المستحق",
     "Invoiced": "مُفوتر",
     "To Invoice": "قيد الفوترة",
-    "Nothing": "لا شيء"
+    "Nothing": "لا شيء",
+    "New Request": "طلب جديد",
+    "New :type request #:id from :name": "طلب :type جديد #:id من :name",
+    "You have been assigned to a request": "تم تعيينك لطلب",
+    "You have been assigned to request #:id": "تم تعيينك للطلب #:id",
+    "A technician has been assigned to your request": "تم تعيين فني لطلبك",
+    "A technician has been assigned to your request #:id": "تم تعيين فني لطلبك #:id",
+    "Cannot complete the request before receiving client rating": "لا يمكن إكمال الطلب قبل الحصول على تقييم العميل",
+    "Request Update": "تحديث الطلب",
+    "Your request #:id status changed to: :status": "تم تغيير حالة طلبك #:id إلى: :status",
+    "Request #:id status updated to: :status": "تم تحديث حالة الطلب #:id إلى: :status"
 }

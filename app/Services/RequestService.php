@@ -33,10 +33,10 @@ class RequestService
                     : null,
             ]));
 
-            $typeLabel = $type === RequestType::Service ? __('صيانة') : __('تركيب');
+            $typeLabel = $type === RequestType::Service ? __('Maintenance') : __('Installation');
             $this->notification->notifyAdmins(
-                __('طلب جديد'),
-                __('طلب :type جديد #:id من :name', ['type' => $typeLabel, 'id' => $req->id, 'name' => $creator->name]),
+                __('New Request'),
+                __('New :type request #:id from :name', ['type' => $typeLabel, 'id' => $req->id, 'name' => $creator->name]),
                 ['type' => 'new_request', 'request_id' => (string) $req->id, 'request_type' => $type->value]
             );
 
@@ -58,8 +58,8 @@ class RequestService
         if ($request->technician) {
             $this->notification->notifyUser(
                 $request->technician,
-                __('تم تعيينك لطلب'),
-                __('تم تعيينك للطلب #:id', ['id' => $request->id]),
+                __('You have been assigned to a request'),
+                __('You have been assigned to request #:id', ['id' => $request->id]),
                 ['type' => 'request_assigned', 'request_id' => (string) $request->id, 'request_type' => $request->type]
             );
         }
@@ -67,8 +67,8 @@ class RequestService
         if ($request->user) {
             $this->notification->notifyUser(
                 $request->user,
-                __('تم تعيين فني لطلبك'),
-                __('تم تعيين فني لطلبك #:id', ['id' => $request->id]),
+                __('A technician has been assigned to your request'),
+                __('A technician has been assigned to your request #:id', ['id' => $request->id]),
                 ['type' => 'technician_assigned', 'request_id' => (string) $request->id, 'request_type' => $request->type]
             );
         }
@@ -83,7 +83,7 @@ class RequestService
             && $actor->isTechnician()
             && ! $request->hasRating()
         ) {
-            throw new Exception(__('لا يمكن إكمال الطلب قبل الحصول على تقييم العميل'));
+            throw new Exception(__('Cannot complete the request before receiving client rating'));
         }
 
         // Prevent a technician from having more than one on_way task simultaneously
@@ -112,8 +112,8 @@ class RequestService
         if ($request->user) {
             $this->notification->notifyUser(
                 $request->user,
-                __('تحديث الطلب'),
-                __('تم تغيير حالة طلبك #:id إلى: :status', ['id' => $request->id, 'status' => $newStatus->label()]),
+                __('Request Update'),
+                __('Your request #:id status changed to: :status', ['id' => $request->id, 'status' => $newStatus->label()]),
                 ['type' => 'status_update', 'request_id' => (string) $request->id, 'request_type' => $request->type, 'status' => $newStatus->value]
             );
         }
@@ -121,8 +121,8 @@ class RequestService
         if ($request->technician && ! $actor->isTechnician()) {
             $this->notification->notifyUser(
                 $request->technician,
-                __('تحديث الطلب'),
-                __('تم تحديث حالة الطلب #:id إلى: :status', ['id' => $request->id, 'status' => $newStatus->label()]),
+                __('Request Update'),
+                __('Request #:id status updated to: :status', ['id' => $request->id, 'status' => $newStatus->label()]),
                 ['type' => 'status_update', 'request_id' => (string) $request->id, 'request_type' => $request->type, 'status' => $newStatus->value]
             );
         }
