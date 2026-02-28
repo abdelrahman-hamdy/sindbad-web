@@ -2,14 +2,64 @@
 
 namespace App\Http\Controllers\Api;
 
+use App\Enums\RequestStatus;
+use App\Enums\RequestType;
 use App\Http\Controllers\Controller;
+use App\Http\Resources\RequestResource;
+use App\Models\Notification;
+use App\Models\Request as ServiceRequest;
 use App\Services\TechnicianLocationService;
+use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Http\Response;
 
 class TechnicianController extends Controller
 {
     public function __construct(private TechnicianLocationService $locationService) {}
+
+    public function home(Request $request): JsonResponse
+    {
+        $user = $request->user();
+
+        $activeStatuses = [
+            RequestStatus::Assigned->value,
+            RequestStatus::OnWay->value,
+            RequestStatus::InProgress->value,
+        ];
+
+        $serviceRequests = ServiceRequest::with(['user'])
+            ->where('technician_id', $user->id)
+            ->where('type', RequestType::Service->value)
+            ->whereIn('status', $activeStatuses)
+            ->latest()
+            ->get();
+
+        $installationRequests = ServiceRequest::with(['user'])
+            ->where('technician_id', $user->id)
+            ->where('type', RequestType::Installation->value)
+            ->whereIn('status', $activeStatuses)
+            ->latest()
+            ->get();
+
+        $unreadNotifications = Notification::where('recipient_id', $user->id)
+            ->whereNull('read_at')
+            ->count();
+
+        return response()->json([
+            'success' => true,
+            'data' => [
+                'profile' => [
+                    'id' => $user->id,
+                    'name' => $user->name,
+                    'phone' => $user->phone,
+                    'avatar_url' => $user->avatar_url,
+                ],
+                'service_requests' => RequestResource::collection($serviceRequests),
+                'installation_requests' => RequestResource::collection($installationRequests),
+                'unread_notifications' => $unreadNotifications,
+            ],
+        ]);
+    }
 
     public function updateLocation(Request $request)
     {
