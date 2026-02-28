@@ -3,6 +3,9 @@
 {{-- GLightbox: lightweight image lightbox (no jQuery, ~10 KB) --}}
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/glightbox/dist/css/glightbox.min.css">
 <script src="https://cdn.jsdelivr.net/npm/glightbox/dist/js/glightbox.min.js"></script>
+<style>
+    .confirm-modal::backdrop { background: rgba(0,0,0,0.55); backdrop-filter: blur(2px); }
+</style>
 <script>
     (function () {
         function initGlb() {
@@ -281,17 +284,17 @@
                                 </a>
                                 {{-- Always-visible delete button --}}
                                 <button @click.prevent="confirmId = {{ $image->id }}; $refs.confirmDialog.showModal()"
-                                        class="absolute top-1 left-1 p-1.5 rounded-full bg-red-500 hover:bg-red-600 text-white shadow transition"
+                                        class="absolute top-1.5 left-1.5 p-2 rounded-full bg-red-500 hover:bg-red-600 text-white shadow-md transition"
                                         title="{{ __('Delete image') }}">
-                                    <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/></svg>
+                                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/></svg>
                                 </button>
                             </div>
                         @endforeach
                     </div>
 
                     {{-- Filament-style confirm delete modal (uses browser top-layer) --}}
-                    <dialog x-ref="confirmDialog"
-                            style="padding:0;border:none;outline:none;background:transparent;max-width:28rem;width:calc(100% - 2rem);border-radius:0.75rem;">
+                    <dialog x-ref="confirmDialog" class="confirm-modal"
+                            style="padding:0;border:none;outline:none;background:transparent;max-width:28rem;width:calc(100% - 2rem);margin:auto;">
                         <div class="bg-white dark:bg-gray-800 rounded-xl shadow-xl overflow-hidden">
                             <div class="p-6">
                                 <div class="flex items-start gap-4">
