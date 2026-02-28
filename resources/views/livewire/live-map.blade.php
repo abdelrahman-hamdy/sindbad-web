@@ -180,13 +180,13 @@
          x-transition:leave="transition ease-in duration-150"
          x-transition:leave-start="opacity-100"
          x-transition:leave-end="opacity-0"
-         @click.self="requestPanelOpen = false"
          style="position:fixed;inset:0;z-index:9999;display:flex;align-items:center;justify-content:center;padding:1rem;">
 
-        {{-- Backdrop --}}
-        <div style="position:absolute;inset:0;background:rgba(0,0,0,0.5);backdrop-filter:blur(4px);"></div>
+        {{-- Backdrop — clicking it closes the modal --}}
+        <div @click="requestPanelOpen = false"
+             style="position:absolute;inset:0;background:rgba(0,0,0,0.5);backdrop-filter:blur(4px);cursor:pointer;"></div>
 
-        {{-- Modal card --}}
+        {{-- Modal card — max-width 600px, centered via flex parent --}}
         <div x-show="requestPanelOpen"
              x-transition:enter="transition ease-out duration-200"
              x-transition:enter-start="opacity-0 scale-95 translate-y-2"
@@ -194,7 +194,7 @@
              x-transition:leave="transition ease-in duration-150"
              x-transition:leave-start="opacity-100 scale-100 translate-y-0"
              x-transition:leave-end="opacity-0 scale-95 translate-y-2"
-             class="relative bg-white dark:bg-gray-800 rounded-2xl shadow-2xl w-full max-w-md z-10 overflow-hidden"
+             style="position:relative;background:white;border-radius:1rem;box-shadow:0 25px 50px rgba(0,0,0,0.25);width:100%;max-width:600px;z-index:1;overflow:hidden;"
              dir="rtl"
              @click.stop>
 
