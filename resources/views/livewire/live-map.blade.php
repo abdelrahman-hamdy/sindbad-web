@@ -51,8 +51,10 @@
     <div class="bg-white dark:bg-gray-800 rounded-xl shadow">
         <div class="flex gap-3 overflow-x-auto px-4 py-3" style="scrollbar-width: thin;">
             <template x-for="tech in filteredTechs" :key="tech.technician_id">
-                <button
+                {{-- div instead of button so the nested "تفاصيل الطلب" button is valid HTML --}}
+                <div
                     @click="focusTechnician(tech)"
+                    role="button"
                     class="flex-none flex flex-col items-center gap-2 px-4 py-3 rounded-xl border-2 transition cursor-pointer min-w-[140px]"
                     :class="focusedTechId === tech.technician_id
                         ? 'border-primary-400 bg-primary-50 dark:border-primary-500 dark:bg-primary-900/20'
@@ -73,7 +75,7 @@
 
                     <span class="text-xs font-semibold text-gray-900 dark:text-white text-center leading-tight max-w-[120px]" x-text="tech.name"></span>
 
-                    <div class="flex flex-col items-center gap-1">
+                    <div class="flex flex-col items-center gap-1 w-full">
                         <span class="text-xs font-medium px-2 py-0.5 rounded-full"
                             :class="!tech.is_online
                                 ? 'bg-gray-100 text-gray-500 dark:bg-gray-600 dark:text-gray-400'
@@ -100,8 +102,20 @@
                                 x-text="tech.active_request.invoice_number ?? '#' + tech.active_request.id">
                             </span>
                         </template>
+                        {{-- Request details button — only for online techs with an active request --}}
+                        <template x-if="tech.is_online && tech.active_request">
+                            <button
+                                @click.stop="showTechRequestDetails(tech)"
+                                class="mt-1 w-full inline-flex items-center justify-center gap-1 text-[10px] font-semibold px-2 py-1 rounded-lg bg-primary-600 hover:bg-primary-700 text-white transition"
+                            >
+                                <svg xmlns="http://www.w3.org/2000/svg" class="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"/>
+                                </svg>
+                                تفاصيل الطلب
+                            </button>
+                        </template>
                     </div>
-                </button>
+                </div>
             </template>
 
             <template x-if="filteredTechs.length === 0">
@@ -123,6 +137,17 @@
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 8V4m0 0h4M4 4l5 5m11-1V4m0 0h-4m4 0l-5 5M4 16v4m0 0h4m-4 0l5-5m11 5l-5-5m5 5v-4m0 4h-4"/>
                 </svg>
                 {{ __('Fit All') }}
+            </button>
+            {{-- Fly to customer location --}}
+            <button x-show="focusedTechId !== null && selectedTechRequest && selectedTechRequest.customer_lat"
+                @click="flyToCustomer()"
+                class="bg-white dark:bg-gray-800 shadow-md rounded-lg px-3 py-2 text-xs font-medium text-blue-600 dark:text-blue-400 hover:bg-blue-50 dark:hover:bg-blue-900/20 transition flex items-center gap-1.5 border border-blue-200 dark:border-blue-700"
+            >
+                <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z"/>
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z"/>
+                </svg>
+                {{ __('Customer Location') }}
             </button>
             <button x-show="focusedTechId !== null" @click="clearFocus()"
                 class="bg-white dark:bg-gray-800 shadow-md rounded-lg px-3 py-2 text-xs font-medium text-gray-500 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-700 transition flex items-center gap-1.5 border border-gray-200 dark:border-gray-600"
@@ -432,32 +457,21 @@ function liveMap(initialLocations) {
         },
 
         buildPopupContent(data) {
-            const updated  = data.updated_at ? this.relativeTime(data.updated_at) : 'N/A';
-            const status   = data.is_online ? '<span style="color:#22c55e;">●</span> Online' : '<span style="color:#9ca3af;">●</span> Offline';
-            const speed    = data.speed > 0 ? `<div>⚡ <strong>${Math.round(data.speed)} km/h</strong></div>` : '';
-            const hdg      = data.heading != null ? `<div>↗ ${Math.round(data.heading)}° heading</div>` : '';
-            const dest = data.active_request;
-            const mapsUrl = dest?.customer_lat && dest?.customer_lng
-                ? `https://www.google.com/maps/dir/?api=1`
-                    + `&origin=${parseFloat(data.latitude).toFixed(6)},${parseFloat(data.longitude).toFixed(6)}`
-                    + `&destination=${dest.customer_lat},${dest.customer_lng}`
-                    + `&travelmode=driving`
-                : null;
+            const updated = data.updated_at ? this.relativeTime(data.updated_at) : 'N/A';
+            const status  = data.is_online ? '<span style="color:#22c55e;">●</span> Online' : '<span style="color:#9ca3af;">●</span> Offline';
+            const speed   = data.speed > 0 ? `<div>⚡ <strong>${Math.round(data.speed)} km/h</strong></div>` : '';
+            const hdg     = data.heading != null ? `<div>↗ ${Math.round(data.heading)}°</div>` : '';
 
-            return `<div style="font-family:system-ui,sans-serif;padding:11px 13px;min-width:210px;line-height:1.65;">
-                <div style="font-size:14px;font-weight:700;color:#111;margin-bottom:4px;">${data.name || 'Unknown'}</div>
+            return `<div style="font-family:system-ui,sans-serif;padding:10px 12px;min-width:180px;line-height:1.6;">
+                <div style="font-size:14px;font-weight:700;color:#111;margin-bottom:3px;">${data.name || 'Unknown'}</div>
                 <div style="font-size:12px;color:#555;">📞 ${data.phone || '—'}</div>
-                <div style="font-size:12px;color:#555;margin-top:3px;">${status} · ${updated}</div>
-                <div style="font-size:12px;color:#666;margin-top:3px;">${hdg}${speed}</div>
-                <div style="margin-top:3px;font-size:11px;color:#999;">📍 ${parseFloat(data.latitude).toFixed(5)}, ${parseFloat(data.longitude).toFixed(5)}</div>
-                ${mapsUrl ? `<a href="${mapsUrl}" target="_blank"
-                   style="display:inline-block;margin-top:8px;font-size:12px;color:#1a73e8;text-decoration:none;font-weight:500;">
-                    Directions to customer ↗
-                </a>` : ''}
+                <div style="font-size:12px;color:#555;margin-top:2px;">${status} · ${updated}</div>
+                <div style="font-size:12px;color:#666;margin-top:2px;">${hdg}${speed}</div>
+                <div style="font-size:11px;color:#999;margin-top:2px;">📍 ${parseFloat(data.latitude).toFixed(5)}, ${parseFloat(data.longitude).toFixed(5)}</div>
             </div>`;
         },
 
-        // ── Card click: focus technician + draw route ─────────────────────────
+        // ── Card click: focus technician + draw route (no popup, no panel) ─────
         async focusTechnician(tech) {
             if (!this.map) return;
 
@@ -468,13 +482,10 @@ function liveMap(initialLocations) {
             }
 
             this.focusedTechId = tech.technician_id;
-            this.$wire.loadTechnicianRequest(tech.technician_id);
 
             if (!tech.is_online || !tech.latitude) return;
 
-            // Step 1: zoom into the technician immediately
             this.map.flyTo([tech.latitude, tech.longitude], 15, { duration: 0.8 });
-            this.markers[tech.technician_id]?.openPopup();
 
             if (tech.active_request?.customer_lat && tech.active_request?.customer_lng) {
                 this.updateDestMarker(tech.active_request);
@@ -486,6 +497,24 @@ function liveMap(initialLocations) {
             } else {
                 this.clearRouteAndDest();
             }
+        },
+
+        // ── "تفاصيل الطلب" button: open detail panel for this technician ────────
+        showTechRequestDetails(tech) {
+            // Show immediately with already-loaded data; Livewire refreshes in background
+            this.selectedTechRequest = tech.active_request;
+            this.requestPanelOpen = true;
+            this.$wire.loadTechnicianRequest(tech.technician_id);
+        },
+
+        // ── Fly to customer location ──────────────────────────────────────────
+        flyToCustomer() {
+            if (!this.selectedTechRequest?.customer_lat || !this.selectedTechRequest?.customer_lng) return;
+            this.map.flyTo(
+                [this.selectedTechRequest.customer_lat, this.selectedTechRequest.customer_lng],
+                16, { duration: 0.8 }
+            );
+            this.destMarker?.openPopup();
         },
 
         async drawRoute(fromLat, fromLng, toLat, toLng) {
@@ -531,6 +560,7 @@ function liveMap(initialLocations) {
         updateDestMarker(activeRequest) {
             if (this.destMarker) {
                 this.destMarker.setLatLng([activeRequest.customer_lat, activeRequest.customer_lng]);
+                this.destMarker.bindPopup(this.buildDestPopupContent(activeRequest));
             } else {
                 this.destMarker = L.marker([activeRequest.customer_lat, activeRequest.customer_lng], {
                     icon: L.divIcon({
@@ -539,9 +569,10 @@ function liveMap(initialLocations) {
                         iconSize: [16, 16],
                         iconAnchor: [8, 8],
                     })
-                }).addTo(this.map);
+                }).addTo(this.map)
+                  .bindPopup(this.buildDestPopupContent(activeRequest));
             }
-            this.destMarker.bindPopup(this.buildDestPopupContent(activeRequest)).openPopup();
+            // Popup opens only when user clicks "Customer Location" button (flyToCustomer)
         },
 
         buildDestPopupContent(req) {
