@@ -129,6 +129,11 @@ class UserResource extends Resource
         return $table
             ->columns([
                 Tables\Columns\TextColumn::make('id')->sortable()->toggleable(isToggledHiddenByDefault: true),
+                Tables\Columns\ImageColumn::make('avatar_url')
+                    ->label(__('Avatar'))
+                    ->circular()
+                    ->defaultImageUrl(fn(User $record) => 'https://ui-avatars.com/api/?name='.urlencode($record->name).'&color=6366f1&background=e0e7ff&size=64')
+                    ->toggleable(isToggledHiddenByDefault: true),
                 Tables\Columns\TextColumn::make('name')->label(__('Name'))->searchable(),
                 Tables\Columns\TextColumn::make('phone')->label(__('Phone'))->searchable()->copyable(),
                 Tables\Columns\TextColumn::make('role')->label(__('Role'))
@@ -146,6 +151,11 @@ class UserResource extends Resource
                     ->toggleable(),
                 Tables\Columns\TextColumn::make('odoo_id')
                     ->label(__('Odoo ID'))
+                    ->toggleable(isToggledHiddenByDefault: true),
+                Tables\Columns\TextColumn::make('default_address')
+                    ->label(__('Address'))
+                    ->limit(35)
+                    ->tooltip(fn($state) => $state)
                     ->toggleable(isToggledHiddenByDefault: true),
                 Tables\Columns\IconColumn::make('is_active')->label(__('Active'))->boolean(),
                 Tables\Columns\TextColumn::make('created_at')->label(__('Created At'))->since()->sortable(),
