@@ -76,6 +76,7 @@
                     <span class="text-xs font-semibold text-gray-900 dark:text-white text-center leading-tight max-w-[120px]" x-text="tech.name"></span>
 
                     <div class="flex flex-col items-center gap-1 w-full">
+                        {{-- Online/offline status badge --}}
                         <span class="text-xs font-medium px-2 py-0.5 rounded-full"
                             :class="!tech.is_online
                                 ? 'bg-gray-100 text-gray-500 dark:bg-gray-600 dark:text-gray-400'
@@ -85,35 +86,32 @@
                             :title="noGps(tech) ? 'Online but no GPS update in 5+ min — phone may be in background' : ''"
                             x-text="!tech.is_online ? @js(__('Offline')) : (noGps(tech) ? @js(__('No GPS signal')) : @js(__('Online')))"
                         ></span>
-                        <template x-if="tech.is_online && tech.speed && tech.speed > 0">
-                            <span class="text-xs text-blue-600 dark:text-blue-400 font-medium" x-text="Math.round(tech.speed) + ' km/h'"></span>
-                        </template>
+                        {{-- Last update time --}}
                         <span class="text-xs text-gray-400 dark:text-gray-500" x-text="relativeTime(tech.updated_at)"></span>
-                        <template x-if="tech.active_request">
-                            <span class="text-[10px] font-semibold px-2 py-0.5 rounded-full mt-1 truncate"
-                                :class="tech.active_request.status === 'on_way'
-                                    ? 'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-300'
-                                    : 'bg-amber-100 text-amber-700'"
-                                x-text="tech.active_request.status === 'on_way' ? 'في الطريق' : 'قيد التنفيذ'">
-                            </span>
-                        </template>
-                        <template x-if="tech.active_request">
-                            <span class="text-[10px] text-gray-500 truncate"
-                                x-text="tech.active_request.invoice_number ?? '#' + tech.active_request.id">
-                            </span>
-                        </template>
-                        {{-- Request details button — visible for all online techs --}}
-                        <template x-if="tech.is_online">
-                            <button
-                                @click.stop="showTechRequestDetails(tech)"
-                                class="mt-1 w-full inline-flex items-center justify-center gap-1 text-[10px] font-semibold px-2 py-1 rounded-lg bg-primary-600 hover:bg-primary-700 text-white transition"
-                            >
-                                <svg xmlns="http://www.w3.org/2000/svg" class="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"/>
-                                </svg>
-                                تفاصيل الطلب
-                            </button>
-                        </template>
+                        {{-- Active request status chip (x-show avoids nested template scope issues) --}}
+                        <span x-show="tech.active_request"
+                            class="text-[10px] font-semibold px-2 py-0.5 rounded-full mt-1 truncate"
+                            :class="tech.active_request?.status === 'on_way'
+                                ? 'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-300'
+                                : 'bg-amber-100 text-amber-700'"
+                            x-text="tech.active_request?.status === 'on_way' ? 'في الطريق' : 'قيد التنفيذ'">
+                        </span>
+                        <span x-show="tech.active_request"
+                            class="text-[10px] text-gray-500 truncate"
+                            x-text="tech.active_request?.invoice_number ?? (tech.active_request ? '#' + tech.active_request.id : '')">
+                        </span>
+                        {{-- Request details button — x-show keeps event listener always attached
+                             Pass only technician_id (primitive) to avoid x-for scope capture issues --}}
+                        <button
+                            x-show="tech.is_online"
+                            @click.stop="showTechRequestDetails(tech.technician_id)"
+                            class="mt-1 w-full inline-flex items-center justify-center gap-1 text-[10px] font-semibold px-2 py-1 rounded-lg bg-primary-600 hover:bg-primary-700 text-white transition"
+                        >
+                            <svg xmlns="http://www.w3.org/2000/svg" class="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"/>
+                            </svg>
+                            تفاصيل الطلب
+                        </button>
                     </div>
                 </div>
             </template>
@@ -556,13 +554,15 @@ function liveMap(initialLocations) {
         },
 
         // ── "تفاصيل الطلب" button: open detail panel for this technician ────────
-        showTechRequestDetails(tech) {
-            // Show cached data immediately; Livewire refreshes in background
-            this.selectedTechRequest = tech.active_request ?? null;
-            this.detailsLoading = !tech.active_request; // show spinner only if no cached data
+        // Accepts technician_id (primitive) — avoids x-for scope capture bugs
+        showTechRequestDetails(technicianId) {
+            const tech = this.locations.find(l => l.technician_id === technicianId);
+            const cached = tech?.active_request ?? null;
+            this.selectedTechRequest = cached;
+            this.detailsLoading = !cached; // spinner only when no cached data
             this.requestPanelOpen = true;
             try {
-                this.$wire.loadTechnicianRequest(tech.technician_id);
+                this.$wire.loadTechnicianRequest(technicianId);
             } catch (e) {
                 this.detailsLoading = false;
             }
