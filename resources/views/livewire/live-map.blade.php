@@ -86,8 +86,10 @@
                             :title="noGps(tech) ? 'Online but no GPS update in 5+ min — phone may be in background' : ''"
                             x-text="!tech.is_online ? @js(__('Offline')) : (noGps(tech) ? @js(__('No GPS signal')) : @js(__('Online')))"
                         ></span>
-                        {{-- Last update time --}}
-                        <span class="text-xs text-gray-400 dark:text-gray-500" x-text="relativeTime(tech.updated_at)"></span>
+                        {{-- Last GPS update time --}}
+                        <span class="text-xs text-gray-400 dark:text-gray-500"
+                            :title="'آخر تحديث GPS: ' + relativeTime(tech.updated_at)"
+                            x-text="'GPS: ' + relativeTime(tech.updated_at)"></span>
                         {{-- Active request status chip (x-show avoids nested template scope issues) --}}
                         <span x-show="tech.active_request"
                             class="text-[10px] font-semibold px-2 py-0.5 rounded-full mt-1 truncate"
@@ -418,6 +420,14 @@ function liveMap(initialLocations) {
 
             this.locations.forEach(loc => this.syncMarker(loc));
             this.connectEcho();
+
+            // Fix DivIcon marker drift: Leaflet DivIcon positions can drift after
+            // repeated zoom operations. Calling marker.update() on zoomend re-anchors
+            // each marker to its correct lat/lng pixel position.
+            this.map.on('zoomend', () => {
+                Object.values(this.markers).forEach(m => m.update());
+                if (this.destMarker) this.destMarker.update();
+            });
         },
 
         // ── Echo WebSocket ────────────────────────────────────────────────────
@@ -769,6 +779,7 @@ function liveMap(initialLocations) {
         },
 
         startTickTimer() {
+            // 10 s interval: keeps relativeTime() labels fresh (was 60 s)
             setInterval(() => {
                 this._tick++;
                 if (!this.map) return;
@@ -776,7 +787,7 @@ function liveMap(initialLocations) {
                     if (!loc.is_online || !this.markers[loc.technician_id]) return;
                     this.markers[loc.technician_id].setIcon(this.buildIcon(loc.heading, this.noGps(loc)));
                 });
-            }, 60000);
+            }, 10000);
         },
 
         startFallbackPoller() {
