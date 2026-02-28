@@ -678,36 +678,17 @@ function liveMap(initialLocations) {
         },
 
         buildDestPopupContent(req) {
-            const statusLabel = req.status === 'on_way' ? 'في الطريق' : 'قيد التنفيذ';
-            const statusBg    = req.status === 'on_way' ? '#3b82f6' : '#f59e0b';
-            const invoice     = req.invoice_number ?? ('#' + req.id);
-            const phone       = req.customer_phone
-                ? `<a href="tel:${req.customer_phone}"
-                       style="color:#3b82f6;text-decoration:none;font-size:12px;display:flex;align-items:center;gap:5px;">
-                       <span>📞</span><span>${req.customer_phone}</span>
-                   </a>`
-                : '';
+            const phone = req.customer_phone
+                ? `<a href="tel:${req.customer_phone}" style="color:#3b82f6;text-decoration:none;font-size:12px;color:#555;">📞 ${req.customer_phone}</a>`
+                : `<div style="font-size:12px;color:#555;">📞 —</div>`;
             const address = req.address
-                ? `<div style="display:flex;align-items:flex-start;gap:5px;font-size:11px;color:#6b7280;">
-                       <span style="flex-shrink:0;line-height:1.5;">📍</span>
-                       <span>${req.address}</span>
-                   </div>`
+                ? `<div style="font-size:11px;color:#999;margin-top:2px;">📍 ${req.address}</div>`
                 : '';
 
-            return `<div dir="rtl" style="font-family:system-ui,sans-serif;min-width:210px;max-width:270px;overflow:hidden;">
-                <div style="background:${statusBg};padding:8px 12px;display:flex;align-items:center;justify-content:space-between;gap:8px;">
-                    <span style="font-size:13px;font-weight:700;color:white;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">
-                        ${req.customer_name ?? 'عميل'}
-                    </span>
-                    <span style="flex-shrink:0;font-size:10px;font-weight:600;color:${statusBg};background:white;padding:2px 8px;border-radius:999px;">
-                        ${statusLabel}
-                    </span>
-                </div>
-                <div style="padding:8px 12px;display:flex;flex-direction:column;gap:5px;">
-                    <div style="font-size:11px;color:#9ca3af;font-weight:500;">🧾 ${invoice}</div>
-                    ${phone}
-                    ${address}
-                </div>
+            return `<div style="font-family:system-ui,sans-serif;padding:10px 12px;min-width:180px;line-height:1.6;">
+                <div style="font-size:14px;font-weight:700;color:#111;margin-bottom:3px;">${req.customer_name || 'عميل'}</div>
+                ${phone}
+                ${address}
             </div>`;
         },
 
