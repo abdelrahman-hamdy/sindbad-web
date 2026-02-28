@@ -181,18 +181,6 @@ class UserResource extends Resource
                 default                     => static::getUrl('edit', ['record' => $record->id]),
             })
             ->actions([
-                Action::make('view')
-                    ->label(__('View'))
-                    ->icon('heroicon-o-eye')
-                    ->color('info')
-                    ->visible(fn(User $record) => $record->role === UserRole::Customer->value)
-                    ->url(fn(User $record) => CustomerDetailPage::getUrl(['id' => $record->id])),
-                Action::make('viewHistory')
-                    ->label(__('History'))
-                    ->icon('heroicon-o-clock')
-                    ->color('info')
-                    ->visible(fn(User $record) => $record->role === UserRole::Technician->value)
-                    ->url(fn(User $record) => TechnicianDetailPage::getUrl(['id' => $record->id])),
                 EditAction::make(),
                 Action::make('toggleActive')
                     ->label(fn(User $record) => $record->is_active ? __('Deactivate') : __('Activate'))
