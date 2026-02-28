@@ -168,103 +168,135 @@
             {{ __('Fetching route…') }}
         </div>
 
-        {{-- Request detail panel --}}
+    </div>
+
+    {{-- ─── Request detail modal (centered, outside map, fixed overlay) ────── --}}
+    <div x-show="requestPanelOpen"
+         x-transition:enter="transition ease-out duration-200"
+         x-transition:enter-start="opacity-0"
+         x-transition:enter-end="opacity-100"
+         x-transition:leave="transition ease-in duration-150"
+         x-transition:leave-start="opacity-100"
+         x-transition:leave-end="opacity-0"
+         class="fixed inset-0 z-[9000] flex items-center justify-center p-4"
+         @click.self="requestPanelOpen = false"
+         style="display:none;">
+
+        {{-- Backdrop --}}
+        <div class="absolute inset-0 bg-black/50 backdrop-blur-sm"></div>
+
+        {{-- Modal card --}}
         <div x-show="requestPanelOpen"
              x-transition:enter="transition ease-out duration-200"
-             x-transition:enter-start="translate-x-full opacity-0"
-             x-transition:enter-end="translate-x-0 opacity-100"
+             x-transition:enter-start="opacity-0 scale-95 translate-y-2"
+             x-transition:enter-end="opacity-100 scale-100 translate-y-0"
              x-transition:leave="transition ease-in duration-150"
-             x-transition:leave-start="translate-x-0 opacity-100"
-             x-transition:leave-end="translate-x-full opacity-0"
-             class="absolute top-0 right-0 h-full w-80 bg-white dark:bg-gray-800 shadow-2xl z-[1100] overflow-y-auto flex flex-col"
-             dir="rtl">
+             x-transition:leave-start="opacity-100 scale-100 translate-y-0"
+             x-transition:leave-end="opacity-0 scale-95 translate-y-2"
+             class="relative bg-white dark:bg-gray-800 rounded-2xl shadow-2xl w-full max-w-md z-10 overflow-hidden"
+             dir="rtl"
+             @click.stop>
 
-            {{-- Panel header --}}
-            <div class="flex items-center justify-between px-4 py-3 border-b border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-700/50">
-                <span class="text-sm font-semibold text-gray-800 dark:text-white">تفاصيل الطلب</span>
-                <button @click="requestPanelOpen = false; selectedTechRequest = null"
-                    class="text-gray-400 hover:text-gray-600 dark:hover:text-gray-200 transition p-1 rounded-md hover:bg-gray-100 dark:hover:bg-gray-600">
-                    <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
+            {{-- Modal header --}}
+            <div class="flex items-center justify-between px-5 py-4 border-b border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-700/50">
+                <div class="flex items-center gap-2.5">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="w-5 h-5 text-primary-600 dark:text-primary-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"/>
                     </svg>
-                </button>
-            </div>
-
-            {{-- Panel body: request found --}}
-            <template x-if="selectedTechRequest">
-                <div class="flex-1 px-4 py-4 space-y-4 text-sm">
-                    {{-- Status badge --}}
-                    <div>
-                        <span class="text-xs font-medium text-gray-500 dark:text-gray-400 block mb-1">الحالة</span>
-                        <span class="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-semibold"
+                    <span class="text-base font-bold text-gray-900 dark:text-white">تفاصيل الطلب</span>
+                    <template x-if="selectedTechRequest">
+                        <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-semibold"
                             :class="selectedTechRequest.status === 'on_way'
                                 ? 'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-300'
                                 : 'bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400'"
                             x-text="selectedTechRequest.status === 'on_way' ? 'في الطريق' : 'قيد التنفيذ'">
                         </span>
-                    </div>
-
-                    {{-- Request type --}}
-                    <div>
-                        <span class="text-xs font-medium text-gray-500 dark:text-gray-400 block mb-1">نوع الطلب</span>
-                        <span class="text-gray-900 dark:text-white font-medium" x-text="selectedTechRequest.type ?? '—'"></span>
-                    </div>
-
-                    {{-- Invoice number --}}
-                    <div>
-                        <span class="text-xs font-medium text-gray-500 dark:text-gray-400 block mb-1">رقم الفاتورة</span>
-                        <span class="text-gray-900 dark:text-white font-medium"
-                            x-text="selectedTechRequest.invoice_number ?? ('#' + selectedTechRequest.id)">
-                        </span>
-                    </div>
-
-                    {{-- Customer name --}}
-                    <div>
-                        <span class="text-xs font-medium text-gray-500 dark:text-gray-400 block mb-1">اسم العميل</span>
-                        <span class="text-gray-900 dark:text-white font-medium" x-text="selectedTechRequest.customer_name ?? '—'"></span>
-                    </div>
-
-                    {{-- Customer phone --}}
-                    <div>
-                        <span class="text-xs font-medium text-gray-500 dark:text-gray-400 block mb-1">هاتف العميل</span>
-                        <a :href="'tel:' + selectedTechRequest.customer_phone"
-                            class="text-primary-600 dark:text-primary-400 font-medium hover:underline"
-                            x-text="selectedTechRequest.customer_phone ?? '—'">
-                        </a>
-                    </div>
-
-                    {{-- Address --}}
-                    <div>
-                        <span class="text-xs font-medium text-gray-500 dark:text-gray-400 block mb-1">العنوان</span>
-                        <span class="text-gray-900 dark:text-white" x-text="selectedTechRequest.address ?? '—'"></span>
-                    </div>
-
-                    {{-- Scheduled date --}}
-                    <div>
-                        <span class="text-xs font-medium text-gray-500 dark:text-gray-400 block mb-1">الموعد المجدول</span>
-                        <span class="text-gray-900 dark:text-white" x-text="selectedTechRequest.scheduled_at ?? '—'"></span>
-                    </div>
-
-                    {{-- View full request link --}}
-                    <template x-if="selectedTechRequest.admin_url">
-                        <a :href="selectedTechRequest.admin_url" target="_blank"
-                            class="inline-flex items-center gap-1.5 mt-2 px-4 py-2 rounded-lg bg-primary-600 hover:bg-primary-700 text-white text-xs font-semibold transition w-full justify-center">
-                            عرض الطلب كاملاً
-                            <svg xmlns="http://www.w3.org/2000/svg" class="w-3.5 h-3.5 rotate-180" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14 5l7 7m0 0l-7 7m7-7H3"/>
-                            </svg>
-                        </a>
                     </template>
+                </div>
+                <button @click="requestPanelOpen = false"
+                    class="p-1.5 rounded-lg text-gray-400 hover:text-gray-600 dark:hover:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-600 transition">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
+                    </svg>
+                </button>
+            </div>
+
+            {{-- Modal body: loading --}}
+            <template x-if="!selectedTechRequest">
+                <div class="flex flex-col items-center justify-center py-12 text-gray-400 dark:text-gray-500">
+                    <svg class="animate-spin w-8 h-8 text-primary-500 mb-3" fill="none" viewBox="0 0 24 24">
+                        <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"/>
+                        <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8z"/>
+                    </svg>
+                    <span class="text-sm">جاري التحميل…</span>
                 </div>
             </template>
 
-            {{-- Panel body: no active request --}}
-            <template x-if="!selectedTechRequest">
-                <div class="flex-1 flex flex-col items-center justify-center px-4 py-8 text-center text-gray-400 dark:text-gray-500">
-                    <svg xmlns="http://www.w3.org/2000/svg" class="w-10 h-10 mb-3 opacity-40" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"/>
-                    </svg>
-                    <p class="text-sm">لا يوجد طلب نشط</p>
+            {{-- Modal body: request data --}}
+            <template x-if="selectedTechRequest">
+                <div class="px-5 py-5 space-y-4">
+
+                    {{-- Top row: invoice + type --}}
+                    <div class="grid grid-cols-2 gap-3 text-sm">
+                        <div class="bg-gray-50 dark:bg-gray-700/50 rounded-xl p-3">
+                            <span class="text-[11px] font-medium text-gray-500 dark:text-gray-400 block mb-1">رقم الفاتورة</span>
+                            <span class="font-bold text-gray-900 dark:text-white"
+                                x-text="selectedTechRequest.invoice_number ?? ('#' + selectedTechRequest.id)">
+                            </span>
+                        </div>
+                        <div class="bg-gray-50 dark:bg-gray-700/50 rounded-xl p-3">
+                            <span class="text-[11px] font-medium text-gray-500 dark:text-gray-400 block mb-1">نوع الطلب</span>
+                            <span class="font-semibold text-gray-900 dark:text-white"
+                                x-text="selectedTechRequest.type === 'service' ? 'صيانة' : (selectedTechRequest.type === 'installation' ? 'تركيب' : (selectedTechRequest.type ?? '—'))">
+                            </span>
+                        </div>
+                    </div>
+
+                    {{-- Customer info card --}}
+                    <div class="bg-blue-50 dark:bg-blue-900/20 border border-blue-100 dark:border-blue-800 rounded-xl p-4 space-y-2.5">
+                        <p class="text-[11px] font-semibold text-blue-500 dark:text-blue-400 uppercase tracking-wide">معلومات العميل</p>
+                        <div class="flex items-center gap-2.5">
+                            <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4 text-blue-500 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"/>
+                            </svg>
+                            <span class="font-semibold text-gray-900 dark:text-white text-sm" x-text="selectedTechRequest.customer_name ?? '—'"></span>
+                        </div>
+                        <div class="flex items-center gap-2.5">
+                            <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4 text-blue-500 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 5a2 2 0 012-2h3.28a1 1 0 01.948.684l1.498 4.493a1 1 0 01-.502 1.21l-2.257 1.13a11.042 11.042 0 005.516 5.516l1.13-2.257a1 1 0 011.21-.502l4.493 1.498a1 1 0 01.684.949V19a2 2 0 01-2 2h-1C9.716 21 3 14.284 3 6V5z"/>
+                            </svg>
+                            <a :href="'tel:' + selectedTechRequest.customer_phone"
+                               class="font-semibold text-blue-600 dark:text-blue-400 text-sm hover:underline"
+                               x-text="selectedTechRequest.customer_phone ?? '—'">
+                            </a>
+                        </div>
+                        <div class="flex items-start gap-2.5">
+                            <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4 text-blue-500 flex-shrink-0 mt-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z"/>
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z"/>
+                            </svg>
+                            <span class="text-sm text-gray-700 dark:text-gray-300" x-text="selectedTechRequest.address ?? '—'"></span>
+                        </div>
+                    </div>
+
+                    {{-- Scheduled date --}}
+                    <div x-show="selectedTechRequest.scheduled_at" class="flex items-center gap-2 text-sm text-gray-500 dark:text-gray-400">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"/>
+                        </svg>
+                        <span x-text="selectedTechRequest.scheduled_at"></span>
+                    </div>
+
+                    {{-- Footer: full request link --}}
+                    <template x-if="selectedTechRequest.admin_url">
+                        <a :href="selectedTechRequest.admin_url" target="_blank"
+                            class="flex items-center justify-center gap-2 w-full px-4 py-2.5 rounded-xl bg-primary-600 hover:bg-primary-700 text-white text-sm font-semibold transition">
+                            <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14"/>
+                            </svg>
+                            عرض الطلب كاملاً
+                        </a>
+                    </template>
                 </div>
             </template>
         </div>
@@ -320,7 +352,10 @@ function liveMap(initialLocations) {
             this.startTickTimer();
             this.startFallbackPoller();
             window.addEventListener('technicianRequestLoaded', (e) => {
-                this.selectedTechRequest = e.detail.active_request;
+                // Only overwrite if Livewire returned real data (don't null out on no-request techs)
+                if (e.detail.active_request) {
+                    this.selectedTechRequest = e.detail.active_request;
+                }
                 this.requestPanelOpen = true;
             });
         },
@@ -338,6 +373,7 @@ function liveMap(initialLocations) {
         },
 
         setupMap() {
+            if (this.map) return; // already initialized — prevents "Map container is already initialized"
             this.map = L.map('sindbad-live-map', { center: [23.5880, 58.3829], zoom: 12, zoomControl: true });
             L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
                 attribution: '© <a href="https://openstreetmap.org/copyright">OpenStreetMap</a>',
@@ -353,6 +389,7 @@ function liveMap(initialLocations) {
                 window.addEventListener('EchoLoaded', () => this.connectEcho());
                 return;
             }
+            try {
             window.Echo.channel('technician-locations')
                 .listen('.TechnicianLocationUpdated', (data) => this.onLocationUpdate(data))
                 .listen('.RequestStatusChanged', (data) => this.onRequestStatusChanged(data));
@@ -365,6 +402,9 @@ function liveMap(initialLocations) {
                 if (conn.state === 'connected') this.wsConnected = true;
             } else {
                 this.wsConnected = true; // assume connected if no state to check
+            }
+            } catch (e) {
+                console.warn('Echo/Pusher connection failed:', e.message);
             }
         },
 
@@ -482,6 +522,7 @@ function liveMap(initialLocations) {
             }
 
             this.focusedTechId = tech.technician_id;
+            this.selectedTechRequest = tech.active_request ?? null; // needed for "Customer Location" button
 
             if (!tech.is_online || !tech.latitude) return;
 
@@ -534,8 +575,11 @@ function liveMap(initialLocations) {
                     this.routePolyline = L.polyline(pts, {
                         color: '#3b82f6', weight: 4, opacity: 0.75,
                     }).addTo(this.map);
-                    // Re-fit to the actual route shape
-                    this.map.flyToBounds(this.routePolyline.getBounds(), { padding: [80, 80], duration: 0.6 });
+                    // Re-fit only when bounds are valid (avoids Bounds.js crash on empty routes)
+                    const bounds = this.routePolyline.getBounds();
+                    if (bounds.isValid()) {
+                        this.map.flyToBounds(bounds, { padding: [80, 80], duration: 0.6 });
+                    }
                 }
             } catch (_) { /* route unavailable, map already focused */ }
             this.routeLoading = false;
