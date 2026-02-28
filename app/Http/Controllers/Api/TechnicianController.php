@@ -104,13 +104,20 @@ class TechnicianController extends Controller
 
         $req = \App\Models\Request::findOrFail($request->request_id);
 
+        $uploaded = collect();
         foreach ($request->file('images') as $image) {
-            $req->addMedia($image)
+            $media = $req->addMedia($image)
                 ->withCustomProperties(['notes' => $request->notes, 'technician_id' => $request->user()->id])
                 ->toMediaCollection('technician_images');
+            $uploaded->push([
+                'id'          => $media->id,
+                'image_url'   => $media->getUrl(),
+                'notes'       => $media->getCustomProperty('notes'),
+                'uploaded_at' => $media->created_at->toISOString(),
+            ]);
         }
 
-        return response()->json(['success' => true, 'message' => __('Images uploaded')]);
+        return response()->json(['success' => true, 'data' => $uploaded]);
     }
 
     public function getImages(Request $request)
