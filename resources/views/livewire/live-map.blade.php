@@ -104,7 +104,7 @@
                         <button
                             type="button"
                             x-show="tech.is_online"
-                            @click.stop.prevent="console.log('[DETAILS BTN] clicked, id=', tech.technician_id); showTechRequestDetails(tech.technician_id)"
+                            @click.stop.prevent="showTechRequestDetails(tech.technician_id)"
                             class="mt-1 w-full inline-flex items-center justify-center gap-1 text-[10px] font-semibold px-2 py-1 rounded-lg bg-primary-600 hover:bg-primary-700 text-white transition"
                         >
                             <svg xmlns="http://www.w3.org/2000/svg" class="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -123,7 +123,7 @@
     </div>
 
     {{-- ─── ROW 3: Map ──────────────────────────────────────────────────────── --}}
-    <div class="relative rounded-xl shadow overflow-hidden bg-gray-100 dark:bg-gray-900" style="height: 520px;">
+    <div class="sindbad-map-wrapper relative rounded-xl shadow overflow-hidden bg-gray-100 dark:bg-gray-900" style="height: 520px; z-index: 0;">
         <div id="sindbad-live-map" class="w-full h-full"></div>
 
         {{-- Map overlay buttons --}}
@@ -172,6 +172,7 @@
          x-teleport moves this element to <body> so position:fixed is always
          relative to the viewport, unaffected by any parent CSS transform. --}}
     <template x-teleport="body">
+    {{-- Overlay wrapper — inline style so position:fixed survives Tailwind purge --}}
     <div x-show="requestPanelOpen"
          x-transition:enter="transition ease-out duration-200"
          x-transition:enter-start="opacity-0"
@@ -179,12 +180,11 @@
          x-transition:leave="transition ease-in duration-150"
          x-transition:leave-start="opacity-100"
          x-transition:leave-end="opacity-0"
-         class="fixed inset-0 z-[9000] flex items-center justify-center p-4"
          @click.self="requestPanelOpen = false"
-         style="display:none;">
+         style="position:fixed;inset:0;z-index:9999;display:flex;align-items:center;justify-content:center;padding:1rem;">
 
         {{-- Backdrop --}}
-        <div class="absolute inset-0 bg-black/50 backdrop-blur-sm"></div>
+        <div style="position:absolute;inset:0;background:rgba(0,0,0,0.5);backdrop-filter:blur(4px);"></div>
 
         {{-- Modal card --}}
         <div x-show="requestPanelOpen"
@@ -322,6 +322,9 @@
     .leaflet-popup-content-wrapper { padding: 0 !important; border-radius: 10px !important; overflow: hidden; box-shadow: 0 4px 20px rgba(0,0,0,0.15) !important; }
     .leaflet-popup-tip-container { margin-top: -1px; }
     .leaflet-top.leaflet-left { top: 60px; }
+    /* Keep the map container below Filament's top navbar when scrolling */
+    #sindbad-live-map { isolation: isolate; }
+    .sindbad-map-wrapper { z-index: 0 !important; }
 </style>
 @endpush
 
@@ -559,18 +562,14 @@ function liveMap(initialLocations) {
 
         // ── "تفاصيل الطلب" button: open detail panel for this technician ────────
         showTechRequestDetails(technicianId) {
-            console.log('[showTechRequestDetails] called, id=', technicianId, 'locations=', this.locations.length);
             const tech = this.locations.find(l => l.technician_id === technicianId);
-            console.log('[showTechRequestDetails] tech found=', tech, 'cached req=', tech?.active_request);
             const cached = tech?.active_request ?? null;
             this.selectedTechRequest = cached;
             this.detailsLoading = !cached;
             this.requestPanelOpen = true;
-            console.log('[showTechRequestDetails] requestPanelOpen set to TRUE');
             try {
                 this.$wire.loadTechnicianRequest(technicianId);
             } catch (e) {
-                console.error('[showTechRequestDetails] $wire error:', e);
                 this.detailsLoading = false;
             }
         },
