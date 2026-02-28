@@ -236,6 +236,7 @@
                     </div>
 
                     {{-- Lightbox --}}
+                    <template x-teleport="body">
                     <div x-show="open"
                          x-transition:enter="transition ease-out duration-200"
                          x-transition:enter-start="opacity-0"
@@ -263,6 +264,7 @@
                             <span x-text="idx + 1"></span> / {{ $customerImages->count() }}
                         </div>
                     </div>
+                    </template>
                 @else
                     <div class="flex flex-col items-center justify-center py-8 rounded-xl bg-gray-50 dark:bg-gray-700/50 border border-dashed border-gray-200 dark:border-gray-700">
                         <svg class="w-8 h-8 text-gray-300 dark:text-gray-600 mb-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -314,6 +316,7 @@
                     </div>
 
                     {{-- Lightbox --}}
+                    <template x-teleport="body">
                     <div x-show="open"
                          x-transition:enter="transition ease-out duration-200"
                          x-transition:enter-start="opacity-0"
@@ -341,6 +344,7 @@
                             <span x-text="idx + 1"></span> / {{ $technicianImages->count() }}
                         </div>
                     </div>
+                    </template>
                 @else
                     <div class="flex flex-col items-center justify-center py-8 rounded-xl bg-gray-50 dark:bg-gray-700/50 border border-dashed border-gray-200 dark:border-gray-700">
                         <svg class="w-8 h-8 text-gray-300 dark:text-gray-600 mb-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
