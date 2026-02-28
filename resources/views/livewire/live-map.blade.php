@@ -87,6 +87,19 @@
                             <span class="text-xs text-blue-600 dark:text-blue-400 font-medium" x-text="Math.round(tech.speed) + ' km/h'"></span>
                         </template>
                         <span class="text-xs text-gray-400 dark:text-gray-500" x-text="relativeTime(tech.updated_at)"></span>
+                        <template x-if="tech.active_request">
+                            <span class="text-[10px] font-semibold px-2 py-0.5 rounded-full mt-1 truncate"
+                                :class="tech.active_request.status === 'on_way'
+                                    ? 'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-300'
+                                    : 'bg-amber-100 text-amber-700'"
+                                x-text="tech.active_request.status === 'on_way' ? 'في الطريق' : 'قيد التنفيذ'">
+                            </span>
+                        </template>
+                        <template x-if="tech.active_request">
+                            <span class="text-[10px] text-gray-500 truncate"
+                                x-text="tech.active_request.invoice_number ?? '#' + tech.active_request.id">
+                            </span>
+                        </template>
                     </div>
                 </button>
             </template>
@@ -129,117 +142,109 @@
             </svg>
             {{ __('Fetching route…') }}
         </div>
-    </div>
 
-    {{-- ─── ROW 4: Simulation panel ─────────────────────────────────────────── --}}
-    <div class="bg-white dark:bg-gray-800 rounded-xl shadow overflow-hidden">
-        <div class="flex items-center gap-2 px-5 py-3 border-b border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-700/50">
-            <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4 text-gray-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9.75 17L9 20l-1 1h8l-1-1-.75-3M3 13h18M5 17H3a2 2 0 01-2-2V5a2 2 0 012-2h14a2 2 0 012 2v10a2 2 0 01-2 2h-2"/>
-            </svg>
-            <span class="text-sm font-semibold text-gray-700 dark:text-gray-200">{{ __('Simulation Panel') }}</span>
-            <span class="text-xs text-gray-400 dark:text-gray-500 ml-1">— test live tracking without a mobile device</span>
-        </div>
+        {{-- Request detail panel --}}
+        <div x-show="requestPanelOpen"
+             x-transition:enter="transition ease-out duration-200"
+             x-transition:enter-start="translate-x-full opacity-0"
+             x-transition:enter-end="translate-x-0 opacity-100"
+             x-transition:leave="transition ease-in duration-150"
+             x-transition:leave-start="translate-x-0 opacity-100"
+             x-transition:leave-end="translate-x-full opacity-0"
+             class="absolute top-0 right-0 h-full w-80 bg-white dark:bg-gray-800 shadow-2xl z-[1100] overflow-y-auto flex flex-col"
+             dir="rtl">
 
-        <div class="p-5 space-y-4">
-            <div class="rounded-lg bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 px-4 py-3 flex flex-wrap gap-x-6 gap-y-2 text-sm">
-                <div>
-                    <span class="text-blue-500 dark:text-blue-400 text-xs font-medium uppercase tracking-wide">{{ __('Technician') }}</span>
-                    <p class="font-semibold text-gray-900 dark:text-white">Khalid Al Rashdi</p>
-                    <p class="text-gray-500 dark:text-gray-400 text-xs">📞 96891111111</p>
-                </div>
-                <div>
-                    <span class="text-blue-500 dark:text-blue-400 text-xs font-medium uppercase tracking-wide">{{ __('Active Invoice') }}</span>
-                    <p class="font-semibold text-gray-900 dark:text-white">T-2026-004</p>
-                    <span class="inline-flex items-center px-1.5 py-0.5 rounded bg-blue-100 text-blue-700 dark:bg-blue-900/40 dark:text-blue-300 font-medium text-xs">Assigned</span>
-                </div>
-                <div>
-                    <span class="text-blue-500 dark:text-blue-400 text-xs font-medium uppercase tracking-wide">{{ __('Customer') }}</span>
-                    <p class="font-semibold text-gray-900 dark:text-white">Mohammed Rashid</p>
-                    <p class="text-gray-500 dark:text-gray-400 text-xs">📍 Al Khuwair, Muscat</p>
-                </div>
-                <div>
-                    <span class="text-blue-500 dark:text-blue-400 text-xs font-medium uppercase tracking-wide">{{ __('Route') }}</span>
-                    <p class="font-semibold text-gray-900 dark:text-white">Qurum → Al Khuwair</p>
-                    <p class="text-gray-500 dark:text-gray-400 text-xs">8 waypoints · ~12 km</p>
-                </div>
+            {{-- Panel header --}}
+            <div class="flex items-center justify-between px-4 py-3 border-b border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-700/50">
+                <span class="text-sm font-semibold text-gray-800 dark:text-white">تفاصيل الطلب</span>
+                <button @click="requestPanelOpen = false; selectedTechRequest = null"
+                    class="text-gray-400 hover:text-gray-600 dark:hover:text-gray-200 transition p-1 rounded-md hover:bg-gray-100 dark:hover:bg-gray-600">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
+                    </svg>
+                </button>
             </div>
 
-            <div>
-                <div class="flex items-center justify-between mb-1.5">
-                    <span class="text-xs text-gray-500 dark:text-gray-400">{{ __('Route progress') }}</span>
-                    <span class="text-xs font-medium text-gray-700 dark:text-gray-300">
-                        Step <span x-text="simStep + 1"></span> / <span x-text="SIM_ROUTE.length"></span>
-                        <template x-if="SIM_ROUTE[simStep]">
-                            <span x-text="' — ' + Math.round(SIM_ROUTE[simStep].speed) + ' km/h · ' + Math.round(SIM_ROUTE[simStep].heading) + '°'"></span>
-                        </template>
-                    </span>
+            {{-- Panel body: request found --}}
+            <template x-if="selectedTechRequest">
+                <div class="flex-1 px-4 py-4 space-y-4 text-sm">
+                    {{-- Status badge --}}
+                    <div>
+                        <span class="text-xs font-medium text-gray-500 dark:text-gray-400 block mb-1">الحالة</span>
+                        <span class="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-semibold"
+                            :class="selectedTechRequest.status === 'on_way'
+                                ? 'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-300'
+                                : 'bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400'"
+                            x-text="selectedTechRequest.status === 'on_way' ? 'في الطريق' : 'قيد التنفيذ'">
+                        </span>
+                    </div>
+
+                    {{-- Request type --}}
+                    <div>
+                        <span class="text-xs font-medium text-gray-500 dark:text-gray-400 block mb-1">نوع الطلب</span>
+                        <span class="text-gray-900 dark:text-white font-medium" x-text="selectedTechRequest.type ?? '—'"></span>
+                    </div>
+
+                    {{-- Invoice number --}}
+                    <div>
+                        <span class="text-xs font-medium text-gray-500 dark:text-gray-400 block mb-1">رقم الفاتورة</span>
+                        <span class="text-gray-900 dark:text-white font-medium"
+                            x-text="selectedTechRequest.invoice_number ?? ('#' + selectedTechRequest.id)">
+                        </span>
+                    </div>
+
+                    {{-- Customer name --}}
+                    <div>
+                        <span class="text-xs font-medium text-gray-500 dark:text-gray-400 block mb-1">اسم العميل</span>
+                        <span class="text-gray-900 dark:text-white font-medium" x-text="selectedTechRequest.customer_name ?? '—'"></span>
+                    </div>
+
+                    {{-- Customer phone --}}
+                    <div>
+                        <span class="text-xs font-medium text-gray-500 dark:text-gray-400 block mb-1">هاتف العميل</span>
+                        <a :href="'tel:' + selectedTechRequest.customer_phone"
+                            class="text-primary-600 dark:text-primary-400 font-medium hover:underline"
+                            x-text="selectedTechRequest.customer_phone ?? '—'">
+                        </a>
+                    </div>
+
+                    {{-- Address --}}
+                    <div>
+                        <span class="text-xs font-medium text-gray-500 dark:text-gray-400 block mb-1">العنوان</span>
+                        <span class="text-gray-900 dark:text-white" x-text="selectedTechRequest.address ?? '—'"></span>
+                    </div>
+
+                    {{-- Scheduled date --}}
+                    <div>
+                        <span class="text-xs font-medium text-gray-500 dark:text-gray-400 block mb-1">الموعد المجدول</span>
+                        <span class="text-gray-900 dark:text-white" x-text="selectedTechRequest.scheduled_at ?? '—'"></span>
+                    </div>
+
+                    {{-- View full request link --}}
+                    <template x-if="selectedTechRequest.admin_url">
+                        <a :href="selectedTechRequest.admin_url" target="_blank"
+                            class="inline-flex items-center gap-1.5 mt-2 px-4 py-2 rounded-lg bg-primary-600 hover:bg-primary-700 text-white text-xs font-semibold transition w-full justify-center">
+                            عرض الطلب كاملاً
+                            <svg xmlns="http://www.w3.org/2000/svg" class="w-3.5 h-3.5 rotate-180" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14 5l7 7m0 0l-7 7m7-7H3"/>
+                            </svg>
+                        </a>
+                    </template>
                 </div>
-                <div class="w-full bg-gray-200 dark:bg-gray-600 rounded-full h-1.5">
-                    <div class="h-1.5 rounded-full bg-primary-500 transition-all duration-500"
-                        :style="'width: ' + (simStep / (SIM_ROUTE.length - 1) * 100) + '%'"
-                    ></div>
+            </template>
+
+            {{-- Panel body: no active request --}}
+            <template x-if="!selectedTechRequest">
+                <div class="flex-1 flex flex-col items-center justify-center px-4 py-8 text-center text-gray-400 dark:text-gray-500">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="w-10 h-10 mb-3 opacity-40" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"/>
+                    </svg>
+                    <p class="text-sm">لا يوجد طلب نشط</p>
                 </div>
-            </div>
-
-            <div class="flex flex-wrap gap-2">
-                <button @click="simGoOnline()" :disabled="simRunning"
-                    class="inline-flex items-center gap-1.5 px-4 py-2 rounded-lg text-sm font-medium transition border"
-                    :class="simRunning ? 'opacity-40 cursor-not-allowed bg-gray-100 dark:bg-gray-700 text-gray-400 border-gray-200 dark:border-gray-600' : 'bg-green-600 hover:bg-green-700 text-white border-green-600 shadow-sm'"
-                >
-                    <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5.636 18.364a9 9 0 010-12.728m12.728 0a9 9 0 010 12.728"/>
-                    </svg>
-                    {{ __('Go Online') }}
-                </button>
-
-                <button @click="simStepForward()" :disabled="simStep >= SIM_ROUTE.length - 1 || simRunning"
-                    class="inline-flex items-center gap-1.5 px-4 py-2 rounded-lg text-sm font-medium transition border"
-                    :class="(simStep >= SIM_ROUTE.length - 1 || simRunning) ? 'opacity-40 cursor-not-allowed bg-gray-100 dark:bg-gray-700 text-gray-400 border-gray-200 dark:border-gray-600' : 'bg-white dark:bg-gray-700 hover:bg-gray-50 dark:hover:bg-gray-600 text-gray-700 dark:text-gray-200 border-gray-300 dark:border-gray-500 shadow-sm'"
-                >
-                    <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/>
-                    </svg>
-                    {{ __('Step Forward') }}
-                </button>
-
-                <button x-show="!simRunning" @click="simStartAuto()" :disabled="simStep >= SIM_ROUTE.length - 1"
-                    class="inline-flex items-center gap-1.5 px-4 py-2 rounded-lg text-sm font-medium transition border"
-                    :class="simStep >= SIM_ROUTE.length - 1 ? 'opacity-40 cursor-not-allowed bg-gray-100 dark:bg-gray-700 text-gray-400 border-gray-200 dark:border-gray-600' : 'bg-primary-600 hover:bg-primary-700 text-white border-primary-600 shadow-sm'"
-                >
-                    <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" fill="currentColor" viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg>
-                    {{ __('Auto Drive (3s)') }}
-                </button>
-
-                <button x-show="simRunning" @click="simPause()"
-                    class="inline-flex items-center gap-1.5 px-4 py-2 rounded-lg text-sm font-medium transition border bg-amber-500 hover:bg-amber-600 text-white border-amber-500 shadow-sm"
-                >
-                    <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" fill="currentColor" viewBox="0 0 24 24"><path d="M6 19h4V5H6v14zm8-14v14h4V5h-4z"/></svg>
-                    {{ __('Pause') }}
-                </button>
-
-                <button @click="simReset()" :disabled="simRunning"
-                    class="inline-flex items-center gap-1.5 px-4 py-2 rounded-lg text-sm font-medium transition border"
-                    :class="simRunning ? 'opacity-40 cursor-not-allowed bg-gray-100 dark:bg-gray-700 text-gray-400 border-gray-200 dark:border-gray-600' : 'bg-white dark:bg-gray-700 hover:bg-gray-50 dark:hover:bg-gray-600 text-gray-700 dark:text-gray-200 border-gray-300 dark:border-gray-500 shadow-sm'"
-                >
-                    <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/>
-                    </svg>
-                    {{ __('Reset') }}
-                </button>
-
-                <button @click="simGoOffline()" :disabled="simRunning"
-                    class="inline-flex items-center gap-1.5 px-4 py-2 rounded-lg text-sm font-medium transition border ml-auto"
-                    :class="simRunning ? 'opacity-40 cursor-not-allowed bg-gray-100 dark:bg-gray-700 text-gray-400 border-gray-200 dark:border-gray-600' : 'bg-red-50 dark:bg-red-900/20 hover:bg-red-100 dark:hover:bg-red-900/40 text-red-700 dark:text-red-400 border-red-200 dark:border-red-800 shadow-sm'"
-                >
-                    <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M18.364 5.636a9 9 0 010 12.728M6.343 6.343a9 9 0 000 12.728M12 12h.01"/>
-                    </svg>
-                    {{ __('Go Offline') }}
-                </button>
-            </div>
+            </template>
         </div>
     </div>
+
 </div>
 
 @push('styles')
@@ -253,19 +258,6 @@
 
 @push('scripts')
 <script>
-const SIM_TECH_ID  = 3;
-const CUSTOMER_DEST = { lat: 23.5880, lng: 58.3829 };
-
-const SIM_ROUTE_DATA = [
-    { lat: 23.6030, lng: 58.5115, heading: 242, speed: 55 },
-    { lat: 23.5985, lng: 58.4935, heading: 245, speed: 62 },
-    { lat: 23.5945, lng: 58.4738, heading: 248, speed: 58 },
-    { lat: 23.5920, lng: 58.4530, heading: 252, speed: 52 },
-    { lat: 23.5905, lng: 58.4310, heading: 255, speed: 47 },
-    { lat: 23.5893, lng: 58.4105, heading: 260, speed: 40 },
-    { lat: 23.5885, lng: 58.3965, heading: 265, speed: 32 },
-    { lat: 23.5880, lng: 58.3829, heading: 270, speed: 0  },
-];
 
 function liveMap(initialLocations) {
     return {
@@ -285,12 +277,8 @@ function liveMap(initialLocations) {
         sidebarFilter: 'all',
         wsConnected:   false,
         _tick:         0,
-
-        // ── Simulation state ─────────────────────────────────────────────────
-        SIM_ROUTE:   SIM_ROUTE_DATA,
-        simStep:     0,
-        simRunning:  false,
-        simInterval: null,
+        selectedTechRequest: null,
+        requestPanelOpen: false,
 
         // ── Computed ─────────────────────────────────────────────────────────
         get onlineCount()  { return this.locations.filter(l => l.is_online).length; },
@@ -306,7 +294,10 @@ function liveMap(initialLocations) {
             this.loadLeaflet();
             this.startTickTimer();
             this.startFallbackPoller();
-            this.listenSimulationEvents();
+            window.addEventListener('technicianRequestLoaded', (e) => {
+                this.selectedTechRequest = e.detail.active_request;
+                this.requestPanelOpen = true;
+            });
         },
 
         loadLeaflet() {
@@ -327,24 +318,8 @@ function liveMap(initialLocations) {
                 attribution: '© <a href="https://openstreetmap.org/copyright">OpenStreetMap</a>',
                 maxZoom: 19,
             }).addTo(this.map);
-            this.addDestMarker();
             this.locations.forEach(loc => this.syncMarker(loc));
             this.connectEcho();
-        },
-
-        addDestMarker() {
-            const html = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 32" width="28" height="36">
-                <path d="M12 0C5.373 0 0 5.373 0 12c0 9 12 20 12 20S24 21 24 12C24 5.373 18.627 0 12 0z" fill="#ef4444"/>
-                <circle cx="12" cy="12" r="5" fill="white"/>
-            </svg>`;
-            const icon = L.divIcon({ html, className: '', iconSize: [28, 36], iconAnchor: [14, 36], popupAnchor: [0, -38] });
-            this.destMarker = L.marker([CUSTOMER_DEST.lat, CUSTOMER_DEST.lng], { icon })
-                .addTo(this.map)
-                .bindPopup(`<div style="font-family:system-ui,sans-serif;padding:10px 12px;min-width:180px;">
-                    <div style="font-weight:700;color:#dc2626;margin-bottom:4px;">📍 {{ __('Customer Destination') }}</div>
-                    <div style="font-size:13px;color:#444;">Mohammed Rashid · Al Khuwair</div>
-                    <div style="font-size:12px;color:#888;margin-top:2px;">Invoice T-2026-004 · Assigned</div>
-                </div>`);
         },
 
         // ── Echo WebSocket ────────────────────────────────────────────────────
@@ -354,7 +329,8 @@ function liveMap(initialLocations) {
                 return;
             }
             window.Echo.channel('technician-locations')
-                .listen('.TechnicianLocationUpdated', (data) => this.onLocationUpdate(data));
+                .listen('.TechnicianLocationUpdated', (data) => this.onLocationUpdate(data))
+                .listen('.RequestStatusChanged', (data) => this.onRequestStatusChanged(data));
 
             const conn = window.Echo.connector?.pusher?.connection;
             if (conn) {
@@ -367,14 +343,7 @@ function liveMap(initialLocations) {
             }
         },
 
-        // ── Simulation events from Livewire dispatch ──────────────────────────
-        listenSimulationEvents() {
-            window.addEventListener('techLocationUpdate', (e) => {
-                this.onLocationUpdate(e.detail.location);
-            });
-        },
-
-        // ── Location update handler (Echo + simulation + polling) ─────────────
+        // ── Location update handler (Echo + polling) ─────────────────────────
         onLocationUpdate(data) {
             const idx = this.locations.findIndex(l => l.technician_id === data.technician_id);
             if (idx >= 0) {
@@ -387,7 +356,12 @@ function liveMap(initialLocations) {
             // If this is the focused technician, redraw the route live
             if (this.focusedTechId === data.technician_id) {
                 if (data.is_online && data.latitude) {
-                    this.drawRoute(parseFloat(data.latitude), parseFloat(data.longitude));
+                    const activeReq = data.active_request ?? this.locations.find(l => l.technician_id === data.technician_id)?.active_request;
+                    if (activeReq?.customer_lat && activeReq?.customer_lng) {
+                        this.drawRoute(parseFloat(data.latitude), parseFloat(data.longitude), activeReq.customer_lat, activeReq.customer_lng);
+                    } else {
+                        this.drawRoute(parseFloat(data.latitude), parseFloat(data.longitude), null, null);
+                    }
                 } else {
                     this.clearFocus();
                 }
@@ -462,11 +436,13 @@ function liveMap(initialLocations) {
             const status   = data.is_online ? '<span style="color:#22c55e;">●</span> Online' : '<span style="color:#9ca3af;">●</span> Offline';
             const speed    = data.speed > 0 ? `<div>⚡ <strong>${Math.round(data.speed)} km/h</strong></div>` : '';
             const hdg      = data.heading != null ? `<div>↗ ${Math.round(data.heading)}° heading</div>` : '';
-            // Directions from technician's current position to customer destination
-            const mapsUrl = `https://www.google.com/maps/dir/?api=1`
-                + `&origin=${parseFloat(data.latitude).toFixed(6)},${parseFloat(data.longitude).toFixed(6)}`
-                + `&destination=${CUSTOMER_DEST.lat},${CUSTOMER_DEST.lng}`
-                + `&travelmode=driving`;
+            const dest = data.active_request;
+            const mapsUrl = dest?.customer_lat && dest?.customer_lng
+                ? `https://www.google.com/maps/dir/?api=1`
+                    + `&origin=${parseFloat(data.latitude).toFixed(6)},${parseFloat(data.longitude).toFixed(6)}`
+                    + `&destination=${dest.customer_lat},${dest.customer_lng}`
+                    + `&travelmode=driving`
+                : null;
 
             return `<div style="font-family:system-ui,sans-serif;padding:11px 13px;min-width:210px;line-height:1.65;">
                 <div style="font-size:14px;font-weight:700;color:#111;margin-bottom:4px;">${data.name || 'Unknown'}</div>
@@ -474,10 +450,10 @@ function liveMap(initialLocations) {
                 <div style="font-size:12px;color:#555;margin-top:3px;">${status} · ${updated}</div>
                 <div style="font-size:12px;color:#666;margin-top:3px;">${hdg}${speed}</div>
                 <div style="margin-top:3px;font-size:11px;color:#999;">📍 ${parseFloat(data.latitude).toFixed(5)}, ${parseFloat(data.longitude).toFixed(5)}</div>
-                <a href="${mapsUrl}" target="_blank"
+                ${mapsUrl ? `<a href="${mapsUrl}" target="_blank"
                    style="display:inline-block;margin-top:8px;font-size:12px;color:#1a73e8;text-decoration:none;font-weight:500;">
                     Directions to customer ↗
-                </a>
+                </a>` : ''}
             </div>`;
         },
 
@@ -492,33 +468,39 @@ function liveMap(initialLocations) {
             }
 
             this.focusedTechId = tech.technician_id;
+            this.$wire.loadTechnicianRequest(tech.technician_id);
 
             if (!tech.is_online || !tech.latitude) return;
 
-            const techPos = [parseFloat(tech.latitude), parseFloat(tech.longitude)];
-
             // Step 1: zoom into the technician immediately
-            this.map.flyTo(techPos, 15, { duration: 0.8 });
+            this.map.flyTo([tech.latitude, tech.longitude], 15, { duration: 0.8 });
             this.markers[tech.technician_id]?.openPopup();
 
-            // Step 2: draw route (will refit once the route shape is known)
-            await this.drawRoute(techPos[0], techPos[1]);
+            if (tech.active_request?.customer_lat && tech.active_request?.customer_lng) {
+                this.updateDestMarker(tech.active_request);
+                await this.drawRoute(
+                    tech.latitude, tech.longitude,
+                    tech.active_request.customer_lat,
+                    tech.active_request.customer_lng,
+                );
+            } else {
+                this.clearRouteAndDest();
+            }
         },
 
-        async drawRoute(fromLat, fromLng) {
-            // Clear previous route
+        async drawRoute(fromLat, fromLng, toLat, toLng) {
+            // Clear previous route polyline (keep destMarker — caller manages it)
             if (this.routePolyline) {
                 this.routePolyline.remove();
                 this.routePolyline = null;
             }
 
-            const techPos = [fromLat, fromLng];
-            const destPos = [CUSTOMER_DEST.lat, CUSTOMER_DEST.lng];
+            if (toLat == null || toLng == null) return;
 
             // Fetch OSRM driving route
             this.routeLoading = true;
             try {
-                const pts = await this.fetchOSRMRoute(fromLat, fromLng, CUSTOMER_DEST.lat, CUSTOMER_DEST.lng);
+                const pts = await this.fetchOSRMRoute(fromLat, fromLng, toLat, toLng);
                 if (pts) {
                     this.routePolyline = L.polyline(pts, {
                         color: '#3b82f6', weight: 4, opacity: 0.75,
@@ -541,7 +523,70 @@ function liveMap(initialLocations) {
 
         clearFocus() {
             this.focusedTechId = null;
-            if (this.routePolyline) { this.routePolyline.remove(); this.routePolyline = null; }
+            this.selectedTechRequest = null;
+            this.requestPanelOpen = false;
+            this.clearRouteAndDest();
+        },
+
+        updateDestMarker(activeRequest) {
+            if (this.destMarker) {
+                this.destMarker.setLatLng([activeRequest.customer_lat, activeRequest.customer_lng]);
+            } else {
+                this.destMarker = L.marker([activeRequest.customer_lat, activeRequest.customer_lng], {
+                    icon: L.divIcon({
+                        className: '',
+                        html: '<div style="background:#ef4444;width:16px;height:16px;border-radius:50%;border:3px solid white;box-shadow:0 2px 6px rgba(0,0,0,0.4)"></div>',
+                        iconSize: [16, 16],
+                        iconAnchor: [8, 8],
+                    })
+                }).addTo(this.map);
+            }
+            this.destMarker.bindPopup(this.buildDestPopupContent(activeRequest)).openPopup();
+        },
+
+        buildDestPopupContent(req) {
+            return `<div dir="rtl" style="font-family:inherit;min-width:160px">
+                <strong>${req.customer_name ?? 'عميل'}</strong><br>
+                <span style="font-size:12px">${req.invoice_number ?? '#' + req.id}</span><br>
+                <span style="font-size:11px;color:#6b7280">${req.address ?? ''}</span>
+            </div>`;
+        },
+
+        clearRouteAndDest() {
+            if (this.routePolyline) { this.map.removeLayer(this.routePolyline); this.routePolyline = null; }
+            if (this.destMarker) { this.map.removeLayer(this.destMarker); this.destMarker = null; }
+        },
+
+        onRequestStatusChanged(data) {
+            const idx = this.locations.findIndex(l => l.technician_id === data.technician_id);
+            if (idx < 0) return;
+            const isFinal = data.status === 'completed' || data.status === 'canceled';
+            if (isFinal) {
+                this.locations[idx] = { ...this.locations[idx], active_request: null };
+                if (this.focusedTechId === data.technician_id) {
+                    this.selectedTechRequest = null;
+                    this.requestPanelOpen = false;
+                    this.clearRouteAndDest();
+                }
+            } else {
+                const newReq = {
+                    id: data.request_id,
+                    status: data.status,
+                    type: data.type,
+                    invoice_number: data.invoice_number,
+                    address: data.address,
+                    customer_lat: data.customer_lat,
+                    customer_lng: data.customer_lng,
+                    scheduled_at: data.scheduled_at,
+                    customer_name: data.customer_name,
+                    customer_phone: data.customer_phone,
+                };
+                this.locations[idx] = { ...this.locations[idx], active_request: newReq };
+                if (this.focusedTechId === data.technician_id) {
+                    this.selectedTechRequest = { ...this.selectedTechRequest, ...newReq };
+                }
+            }
+            this._tick++;
         },
 
         fitAllMarkers() {
@@ -555,36 +600,6 @@ function liveMap(initialLocations) {
                 { padding: [60, 60], duration: 0.8 }
             );
         },
-
-        // ── Simulation controls ───────────────────────────────────────────────
-        simGoOnline() {
-            this.simStep = 0;
-            const wp = this.SIM_ROUTE[0];
-            this.$wire.simulateStep(SIM_TECH_ID, wp.lat, wp.lng, wp.heading, wp.speed);
-            setTimeout(() => this.map?.flyTo([wp.lat, wp.lng], 12, { duration: 1 }), 400);
-        },
-
-        simStepForward() {
-            if (this.simStep >= this.SIM_ROUTE.length - 1) return;
-            this.simStep++;
-            const wp = this.SIM_ROUTE[this.simStep];
-            this.$wire.simulateStep(SIM_TECH_ID, wp.lat, wp.lng, wp.heading, wp.speed);
-        },
-
-        simStartAuto() {
-            if (this.simStep >= this.SIM_ROUTE.length - 1) return;
-            this.simRunning = true;
-            this.simInterval = setInterval(() => {
-                if (this.simStep >= this.SIM_ROUTE.length - 1) { this.simPause(); return; }
-                this.simStep++;
-                const wp = this.SIM_ROUTE[this.simStep];
-                this.$wire.simulateStep(SIM_TECH_ID, wp.lat, wp.lng, wp.heading, wp.speed);
-            }, 3000);
-        },
-
-        simPause()  { this.simRunning = false; clearInterval(this.simInterval); this.simInterval = null; },
-        simReset()  { this.simPause(); this.simStep = 0; },
-        simGoOffline() { this.simPause(); this.simStep = 0; this.$wire.simulateOffline(SIM_TECH_ID); },
 
         // ── Helpers ───────────────────────────────────────────────────────────
         noGps(tech) {

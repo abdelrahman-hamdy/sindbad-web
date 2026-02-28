@@ -7,6 +7,7 @@ use App\Enums\RequestType;
 use App\Models\Request;
 use App\Models\User;
 use Exception;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
 
 class RequestService
@@ -18,7 +19,9 @@ class RequestService
 
     public function createRequest(User $creator, array $data, RequestType $type): Request
     {
-        $prefix = $type === RequestType::Service ? 'T-' : 'B-';
+        $prefix = $type === RequestType::Service
+            ? config('sindbad.request_prefix_service')
+            : config('sindbad.request_prefix_installation');
 
         return DB::transaction(function () use ($creator, $data, $type, $prefix) {
             $req = Request::create(array_merge($data, [
@@ -30,10 +33,10 @@ class RequestService
                     : null,
             ]));
 
-            $typeLabel = $type === RequestType::Service ? 'صيانة' : 'تركيب';
+            $typeLabel = $type === RequestType::Service ? __('صيانة') : __('تركيب');
             $this->notification->notifyAdmins(
-                'طلب جديد',
-                "طلب {$typeLabel} جديد #{$req->id} من {$creator->name}",
+                __('طلب جديد'),
+                __('طلب :type جديد #:id من :name', ['type' => $typeLabel, 'id' => $req->id, 'name' => $creator->name]),
                 ['type' => 'new_request', 'request_id' => (string) $req->id, 'request_type' => $type->value]
             );
 
@@ -55,8 +58,8 @@ class RequestService
         if ($request->technician) {
             $this->notification->notifyUser(
                 $request->technician,
-                'تم تعيينك لطلب',
-                "تم تعيينك للطلب #{$request->id}",
+                __('تم تعيينك لطلب'),
+                __('تم تعيينك للطلب #:id', ['id' => $request->id]),
                 ['type' => 'request_assigned', 'request_id' => (string) $request->id, 'request_type' => $request->type]
             );
         }
@@ -64,8 +67,8 @@ class RequestService
         if ($request->user) {
             $this->notification->notifyUser(
                 $request->user,
-                'تم تعيين فني لطلبك',
-                "تم تعيين فني لطلبك #{$request->id}",
+                __('تم تعيين فني لطلبك'),
+                __('تم تعيين فني لطلبك #:id', ['id' => $request->id]),
                 ['type' => 'technician_assigned', 'request_id' => (string) $request->id, 'request_type' => $request->type]
             );
         }
@@ -80,7 +83,7 @@ class RequestService
             && $actor->isTechnician()
             && ! $request->hasRating()
         ) {
-            throw new Exception('لا يمكن إكمال الطلب قبل الحصول على تقييم العميل');
+            throw new Exception(__('لا يمكن إكمال الطلب قبل الحصول على تقييم العميل'));
         }
 
         $updateData = ['status' => $newStatus->value];
@@ -89,13 +92,16 @@ class RequestService
         }
         $request->update($updateData);
 
+        Cache::forget('dashboard_stats_' . today()->toDateString());
+        Cache::forget('performance_reports_' . today()->toDateString());
+
         $request->load(['user', 'technician']);
 
         if ($request->user) {
             $this->notification->notifyUser(
                 $request->user,
-                'تحديث الطلب',
-                "تم تغيير حالة طلبك #{$request->id} إلى: {$newStatus->label()}",
+                __('تحديث الطلب'),
+                __('تم تغيير حالة طلبك #:id إلى: :status', ['id' => $request->id, 'status' => $newStatus->label()]),
                 ['type' => 'status_update', 'request_id' => (string) $request->id, 'request_type' => $request->type, 'status' => $newStatus->value]
             );
         }
@@ -103,10 +109,22 @@ class RequestService
         if ($request->technician && ! $actor->isTechnician()) {
             $this->notification->notifyUser(
                 $request->technician,
-                'تحديث الطلب',
-                "تم تحديث حالة الطلب #{$request->id} إلى: {$newStatus->label()}",
+                __('تحديث الطلب'),
+                __('تم تحديث حالة الطلب #:id إلى: :status', ['id' => $request->id, 'status' => $newStatus->label()]),
                 ['type' => 'status_update', 'request_id' => (string) $request->id, 'request_type' => $request->type, 'status' => $newStatus->value]
             );
+        }
+
+        // Broadcast status change to admin live-map
+        if ($request->technician_id && in_array($request->status->value, [
+            RequestStatus::OnWay->value,
+            RequestStatus::InProgress->value,
+            RequestStatus::Completed->value,
+            RequestStatus::Canceled->value,
+        ])) {
+            try {
+                broadcast(new \App\Events\RequestStatusChanged($request));
+            } catch (\Throwable) {}
         }
 
         return $request->fresh();
@@ -132,6 +150,8 @@ class RequestService
 
     public function generateInvoicePrefix(RequestType $type): string
     {
-        return $type === RequestType::Service ? 'T-' : 'B-';
+        return $type === RequestType::Service
+            ? config('sindbad.request_prefix_service')
+            : config('sindbad.request_prefix_installation');
     }
 }
