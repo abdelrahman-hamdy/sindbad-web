@@ -13,6 +13,11 @@ return Application::configure(basePath: dirname(__DIR__))
         health: '/up',
     )
     ->withMiddleware(function (Middleware $middleware): void {
+        // Pusher's channel-auth XHR doesn't include a CSRF token.
+        // The route still requires an authenticated session, so excluding CSRF
+        // here is standard practice for broadcasting auth endpoints.
+        $middleware->validateCsrfTokens(except: ['broadcasting/auth']);
+
         $middleware->api(append: [
             \App\Http\Middleware\SetApiLocale::class,
         ]);
