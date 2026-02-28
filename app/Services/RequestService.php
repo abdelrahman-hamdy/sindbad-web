@@ -110,12 +110,21 @@ class RequestService
         $request->load(['user', 'technician']);
 
         if ($request->user) {
-            $this->notification->notifyUser(
-                $request->user,
-                __('Request Update'),
-                __('Your request #:id status changed to: :status', ['id' => $request->id, 'status' => $newStatus->label()]),
-                ['type' => 'status_update', 'request_id' => (string) $request->id, 'request_type' => $request->type, 'status' => $newStatus->value]
-            );
+            if ($newStatus === RequestStatus::InProgress) {
+                $this->notification->notifyUser(
+                    $request->user,
+                    'يمكنك الآن تقييم الخدمة',
+                    'الفني بدأ العمل في طلبك #' . $request->id . '. قيّم الخدمة الآن من التطبيق قبل إغلاق الطلب.',
+                    ['type' => 'rating_request', 'request_id' => (string) $request->id, 'request_type' => $request->type->value]
+                );
+            } else {
+                $this->notification->notifyUser(
+                    $request->user,
+                    __('Request Update'),
+                    __('Your request #:id status changed to: :status', ['id' => $request->id, 'status' => $newStatus->label()]),
+                    ['type' => 'status_update', 'request_id' => (string) $request->id, 'request_type' => $request->type->value, 'status' => $newStatus->value]
+                );
+            }
         }
 
         if ($request->technician && ! $actor->isTechnician()) {
