@@ -28,32 +28,28 @@ class BookingCalendarWidget extends FullCalendarWidget
     public ?string $filterType = null;
     public ?int $selectedRequestId = null;
 
-    public function boot(): void
+    public function bootedInteractsWithActions(): void
     {
-        $mem = round(memory_get_usage(true) / 1024 / 1024, 1);
-        file_put_contents(storage_path('logs/mem_trace.log'),
-            date('[H:i:s]') . " boot: {$mem}MB\n", FILE_APPEND);
-    }
+        $log = fn ($msg) => file_put_contents(storage_path('logs/mem_trace.log'),
+            date('[H:i:s]') . " {$msg} — " . round(memory_get_usage(true) / 1024 / 1024, 1) . "MB\n", FILE_APPEND);
 
-    public function booted(): void
-    {
-        $mem = round(memory_get_usage(true) / 1024 / 1024, 1);
-        file_put_contents(storage_path('logs/mem_trace.log'),
-            date('[H:i:s]') . " booted: {$mem}MB\n", FILE_APPEND);
-    }
+        $log('bootedInteractsWithActions START, mountedActions=' . count($this->mountedActions ?? []));
 
-    public function rendering(\Illuminate\View\View $view): void
-    {
-        $mem = round(memory_get_usage(true) / 1024 / 1024, 1);
-        file_put_contents(storage_path('logs/mem_trace.log'),
-            date('[H:i:s]') . " rendering: {$mem}MB\n", FILE_APPEND);
-    }
+        if (filled($originallyMountedActionIndex = array_key_last($this->mountedActions))) {
+            $this->originallyMountedActionIndex = $originallyMountedActionIndex;
+        }
 
-    public function rendered(\Illuminate\View\View $view): void
-    {
-        $mem = round(memory_get_usage(true) / 1024 / 1024, 1);
-        file_put_contents(storage_path('logs/mem_trace.log'),
-            date('[H:i:s]') . " rendered: {$mem}MB\n", FILE_APPEND);
+        $log('before cacheTraitActions');
+        $this->cacheTraitActions();
+        $log('after cacheTraitActions');
+
+        if (count($this->mountedActions)) {
+            $log('before cacheMountedActions (' . json_encode(array_column($this->mountedActions, 'name')) . ')');
+            $this->cacheMountedActions($this->mountedActions);
+            $log('after cacheMountedActions');
+        }
+
+        $log('bootedInteractsWithActions END');
     }
 
     public function config(): array
