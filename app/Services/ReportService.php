@@ -42,13 +42,24 @@ class ReportService
 
     public function getLeaderboard(int $limit = 5): Collection
     {
+        $avgRatings = DB::table('ratings')
+            ->join('requests', 'ratings.request_id', '=', 'requests.id')
+            ->whereNotNull('requests.technician_id')
+            ->select('requests.technician_id', DB::raw('ROUND(AVG((ratings.product_rating + ratings.service_rating) / 2), 1) as avg_rating'))
+            ->groupBy('requests.technician_id')
+            ->pluck('avg_rating', 'technician_id');
+
         return User::technicians()
             ->withCount(['assignedRequests as completed_count' => function ($q) {
                 $q->where('status', RequestStatus::Completed->value);
             }])
             ->orderByDesc('completed_count')
             ->limit($limit)
-            ->get();
+            ->get()
+            ->map(function ($tech) use ($avgRatings) {
+                $tech->avg_rating = $avgRatings[$tech->id] ?? null;
+                return $tech;
+            });
     }
 
     public function getDailyCompleted(string $date): Collection
@@ -159,6 +170,13 @@ class ReportService
 
     public function getBottomPerformers(int $limit = 5): Collection
     {
+        $avgRatings = DB::table('ratings')
+            ->join('requests', 'ratings.request_id', '=', 'requests.id')
+            ->whereNotNull('requests.technician_id')
+            ->select('requests.technician_id', DB::raw('ROUND(AVG((ratings.product_rating + ratings.service_rating) / 2), 1) as avg_rating'))
+            ->groupBy('requests.technician_id')
+            ->pluck('avg_rating', 'technician_id');
+
         return User::technicians()
             ->withCount(['assignedRequests as completed_count' => function ($q) {
                 $q->where('status', RequestStatus::Completed->value);
@@ -166,6 +184,111 @@ class ReportService
             ->having('completed_count', '>', 0)
             ->orderBy('completed_count')
             ->limit($limit)
+            ->get()
+            ->map(function ($tech) use ($avgRatings) {
+                $tech->avg_rating = $avgRatings[$tech->id] ?? null;
+                return $tech;
+            });
+    }
+
+    public function getAvgCompletionTime(): float
+    {
+        return round((float) Request::where('status', RequestStatus::Completed->value)
+            ->whereNotNull('completed_at')
+            ->selectRaw('AVG(TIMESTAMPDIFF(HOUR, created_at, completed_at)) as avg_hours')
+            ->value('avg_hours'), 1);
+    }
+
+    public function getServiceTypeBreakdown(): array
+    {
+        $typeCounts = Request::select('type', DB::raw('count(*) as count'))
+            ->groupBy('type')
+            ->pluck('count', 'type')
+            ->toArray();
+
+        $serviceSubBreakdown = Request::where('type', 'service')
+            ->select('service_type', DB::raw('count(*) as count'))
+            ->whereNotNull('service_type')
+            ->groupBy('service_type')
+            ->pluck('count', 'service_type')
+            ->toArray();
+
+        return [
+            'service'         => (int) ($typeCounts['service'] ?? 0),
+            'installation'    => (int) ($typeCounts['installation'] ?? 0),
+            'by_service_type' => $serviceSubBreakdown,
+        ];
+    }
+
+    public function getRequestTrendsGrouped(int $days = 30): array
+    {
+        $results = Request::query()
+            ->select(
+                DB::raw('DATE(created_at) as date'),
+                'type',
+                DB::raw('count(*) as count')
+            )
+            ->where('created_at', '>=', now()->subDays($days))
+            ->groupBy('date', 'type')
+            ->orderBy('date')
             ->get();
+
+        $dateMap = [];
+        foreach ($results as $row) {
+            $dateMap[$row->date][$row->type] = $row->count;
+        }
+
+        $labels           = [];
+        $serviceData      = [];
+        $installationData = [];
+
+        $current = now()->subDays($days)->startOfDay();
+        $end     = now()->endOfDay();
+
+        while ($current <= $end) {
+            $dateStr = $current->format('Y-m-d');
+            $labels[]           = $current->format('m/d');
+            $serviceData[]      = $dateMap[$dateStr]['service'] ?? 0;
+            $installationData[] = $dateMap[$dateStr]['installation'] ?? 0;
+            $current->addDay();
+        }
+
+        return [
+            'labels'       => $labels,
+            'service'      => $serviceData,
+            'installation' => $installationData,
+        ];
+    }
+
+    public function getFilteredStats(string $period): array
+    {
+        $query = Request::query();
+
+        match ($period) {
+            'today' => $query->whereDate('created_at', today()),
+            '7'     => $query->where('created_at', '>=', now()->subDays(7)),
+            '30'    => $query->where('created_at', '>=', now()->subDays(30)),
+            '90'    => $query->where('created_at', '>=', now()->subDays(90)),
+            default => null,
+        };
+
+        $total     = (clone $query)->count();
+        $completed = (clone $query)->where('status', RequestStatus::Completed->value)->count();
+        $pending   = (clone $query)->where('status', RequestStatus::Pending->value)->count();
+        $canceled  = (clone $query)->where('status', RequestStatus::Canceled->value)->count();
+        $active    = (clone $query)->whereIn('status', [
+            RequestStatus::Assigned->value,
+            RequestStatus::OnWay->value,
+            RequestStatus::InProgress->value,
+        ])->count();
+
+        return [
+            'total'           => $total,
+            'completed'       => $completed,
+            'pending'         => $pending,
+            'canceled'        => $canceled,
+            'active'          => $active,
+            'completion_rate' => $total > 0 ? round($completed / $total * 100, 1) : 0,
+        ];
     }
 }
