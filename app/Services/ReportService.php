@@ -193,10 +193,10 @@ class ReportService
 
     public function getAvgCompletionTime(): float
     {
-        return round((float) Request::where('status', RequestStatus::Completed->value)
+        return max(0.0, round((float) Request::where('status', RequestStatus::Completed->value)
             ->whereNotNull('completed_at')
-            ->selectRaw('AVG(TIMESTAMPDIFF(HOUR, created_at, completed_at)) as avg_hours')
-            ->value('avg_hours'), 1);
+            ->selectRaw('AVG(GREATEST(0, TIMESTAMPDIFF(HOUR, created_at, completed_at))) as avg_hours')
+            ->value('avg_hours'), 1));
     }
 
     public function getServiceTypeBreakdown(): array

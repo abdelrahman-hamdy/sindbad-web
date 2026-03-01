@@ -462,5 +462,20 @@
     "Cannot complete the request before receiving client rating": "لا يمكن إكمال الطلب قبل الحصول على تقييم العميل",
     "Request Update": "تحديث الطلب",
     "Your request #:id status changed to: :status": "تم تغيير حالة طلبك #:id إلى: :status",
-    "Request #:id status updated to: :status": "تم تحديث حالة الطلب #:id إلى: :status"
+    "Request #:id status updated to: :status": "تم تحديث حالة الطلب #:id إلى: :status",
+    "7 Days": "7 أيام",
+    "30 Days": "30 يوم",
+    "90 Days": "90 يوم",
+    "Avg Hours": "متوسط الساعات",
+    "Filter Period": "فترة التصفية",
+    "Request Volume Trend": "اتجاه حجم الطلبات",
+    "Request Type Split": "توزيع أنواع الطلبات",
+    "Service Sub-types": "أنواع الصيانة الفرعية",
+    "Completed At": "وقت الإتمام",
+    "Invoice": "الفاتورة",
+    "Order Count": "عدد الطلبات",
+    "OMR paid": "ر.ع مدفوع",
+    "rem.": "متبقٍ",
+    "No activity found.": "لا توجد بيانات نشاط.",
+    "Reports & Analytics": "التقارير والتحليلات"
 }
