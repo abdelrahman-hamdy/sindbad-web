@@ -146,14 +146,23 @@
                     @endforeach
                 </div>
             </div>
-            {{-- Chart canvas — wire:ignore keeps Alpine/Chart.js in control, $wire.$watch re-renders on data change --}}
+            {{--
+                Data attributes store PHP values HTML-encoded so they are safe in HTML.
+                The browser automatically decodes them when read via dataset.X.
+                This avoids putting @json() or {{ }} inside the x-data="" attribute,
+                which would break HTML parsing because JSON uses the same " delimiter.
+            --}}
             <div class="p-4"
+                data-trends="{{ e(json_encode($trendData)) }}"
+                data-label-service="{{ e(__('Service')) }}"
+                data-label-installation="{{ e(__('Installation')) }}"
                 x-data="{
                     chart: null,
                     init() {
                         if (typeof Chart === 'undefined') return;
-                        this.build(@json($trendData));
-                        $wire.$watch('trendData', (data) => this.build(data));
+                        const data = JSON.parse(this.$el.dataset.trends);
+                        this.build(data);
+                        this.$wire.$watch('trendData', (newData) => this.build(newData));
                     },
                     build(data) {
                         if (this.chart) this.chart.destroy();
@@ -165,8 +174,8 @@
                             data: {
                                 labels: data.labels,
                                 datasets: [
-                                    { label: '{{ __('Service') }}',      data: data.service,      borderColor: '#0EA5E9', backgroundColor: 'rgba(14,165,233,0.12)',  tension: 0.4, fill: true, pointRadius: 3 },
-                                    { label: '{{ __('Installation') }}', data: data.installation, borderColor: '#8B5CF6', backgroundColor: 'rgba(139,92,246,0.10)', tension: 0.4, fill: true, pointRadius: 3 },
+                                    { label: this.$el.dataset.labelService,      data: data.service,      borderColor: '#0EA5E9', backgroundColor: 'rgba(14,165,233,0.12)',  tension: 0.4, fill: true, pointRadius: 3 },
+                                    { label: this.$el.dataset.labelInstallation, data: data.installation, borderColor: '#8B5CF6', backgroundColor: 'rgba(139,92,246,0.10)', tension: 0.4, fill: true, pointRadius: 3 },
                                 ]
                             },
                             options: {
