@@ -125,7 +125,13 @@ class BookingCalendarWidget extends FullCalendarWidget
     {
         $this->selectedRequestId = (int) ($event['id'] ?? 0);
         if ($this->selectedRequestId) {
-            $this->mountAction('viewRequest');
+            try {
+                $this->mountAction('viewRequest');
+                \Log::info('[Widget] mountAction viewRequest OK');
+            } catch (\Throwable $e) {
+                \Log::error('[Widget] mountAction viewRequest FAILED: ' . $e->getMessage() . ' | ' . $e->getFile() . ':' . $e->getLine());
+                throw $e;
+            }
         }
     }
 

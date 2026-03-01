@@ -69,7 +69,13 @@ class BookingCalendarPage extends Page
     public function openScheduleModal(int $id): void
     {
         $this->schedulingRequestId = $id;
-        $this->mountAction('scheduleRequest');
+        try {
+            $this->mountAction('scheduleRequest');
+            \Log::info('[Page] mountAction scheduleRequest OK');
+        } catch (\Throwable $e) {
+            \Log::error('[Page] mountAction scheduleRequest FAILED: ' . $e->getMessage() . ' | ' . $e->getFile() . ':' . $e->getLine());
+            throw $e;
+        }
     }
 
     public function scheduleRequestAction(): Action
