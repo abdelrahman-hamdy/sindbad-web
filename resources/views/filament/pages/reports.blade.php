@@ -132,14 +132,14 @@
                     </svg>
                     <h3 class="text-sm font-semibold text-gray-700 dark:text-gray-200">{{ __('Request Volume Trend') }}</h3>
                 </div>
-                <div class="flex gap-1">
-                    @foreach(['7' => '7D', '30' => '30D', '90' => '90D'] as $tv => $tl)
+                <div class="flex flex-wrap gap-2">
+                    @foreach(['7' => __('7 Days'), '30' => __('30 Days'), '90' => __('90 Days')] as $tv => $tl)
                         <button
                             wire:click="$set('trendPeriod', '{{ $tv }}')"
-                            class="px-2.5 py-1 text-xs font-semibold rounded-md transition-all
+                            class="px-3 py-1.5 text-sm font-semibold rounded-lg transition-all duration-150 focus:outline-none
                                 {{ $trendPeriod === $tv
                                     ? 'bg-[#008BA0] text-white shadow-sm dark:bg-cyan-600'
-                                    : 'bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-600' }}"
+                                    : 'bg-[rgba(0,139,160,0.15)] text-[#006A7A] dark:bg-cyan-400/10 dark:text-cyan-300' }}"
                         >
                             {{ $tl }}
                         </button>
@@ -159,10 +159,16 @@
                 x-data="{
                     chart: null,
                     init() {
-                        if (typeof Chart === 'undefined') return;
-                        const data = JSON.parse(this.$el.dataset.trends);
-                        this.build(data);
-                        this.$wire.$watch('trendData', (newData) => this.build(newData));
+                        const tryBuild = () => {
+                            if (typeof Chart !== 'undefined') {
+                                const data = JSON.parse(this.$el.dataset.trends);
+                                this.build(data);
+                                this.$wire.$watch('trendData', (newData) => this.build(newData));
+                            } else {
+                                setTimeout(() => tryBuild(), 100);
+                            }
+                        };
+                        tryBuild();
                     },
                     build(data) {
                         if (this.chart) this.chart.destroy();
