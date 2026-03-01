@@ -123,15 +123,14 @@ class BookingCalendarWidget extends FullCalendarWidget
 
     public function onEventClick(array $event): void
     {
+        // Prevent double-mounting if action is already open (double-click protection)
+        if (count($this->mountedActions ?? [])) {
+            return;
+        }
+
         $this->selectedRequestId = (int) ($event['id'] ?? 0);
         if ($this->selectedRequestId) {
-            try {
-                $this->mountAction('viewRequest');
-                \Log::info('[Widget] mountAction viewRequest OK');
-            } catch (\Throwable $e) {
-                \Log::error('[Widget] mountAction viewRequest FAILED: ' . $e->getMessage() . ' | ' . $e->getFile() . ':' . $e->getLine());
-                throw $e;
-            }
+            $this->mountAction('viewRequest');
         }
     }
 
