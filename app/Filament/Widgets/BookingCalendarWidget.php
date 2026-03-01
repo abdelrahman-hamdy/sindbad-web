@@ -8,7 +8,6 @@ use App\Models\Request;
 use App\Models\User;
 use App\Services\RequestService;
 use Carbon\Carbon;
-use Illuminate\Support\Facades\Log;
 use Filament\Actions\Action;
 use Filament\Forms\Components\DatePicker;
 use Filament\Forms\Components\Select;
@@ -47,7 +46,6 @@ class BookingCalendarWidget extends FullCalendarWidget
     #[On('booking-filters-updated')]
     public function applyFilters(?string $technician, ?string $type): void
     {
-        Log::info('[BookingCalendarWidget] applyFilters called', compact('technician', 'type'));
         $this->filterTechnician = $technician ?: null;
         $this->filterType       = $type ?: null;
         $this->dispatch('filament-fullcalendar--refresh');
@@ -125,7 +123,6 @@ class BookingCalendarWidget extends FullCalendarWidget
 
     public function onEventClick(array $event): void
     {
-        Log::info('[BookingCalendarWidget] onEventClick called', ['event_id' => $event['id'] ?? null]);
         $this->selectedRequestId = (int) ($event['id'] ?? 0);
         if ($this->selectedRequestId) {
             $this->mountAction('viewRequest');
@@ -173,8 +170,7 @@ class BookingCalendarWidget extends FullCalendarWidget
                     Select::make('technician_id')
                         ->label(__('Technician'))
                         ->options(User::technicians()->active()->pluck('name', 'id'))
-                        ->searchable()
-                        ->nullable(),
+                        ->searchable(),
                     Select::make('status')
                         ->label(__('Status'))
                         ->options(
