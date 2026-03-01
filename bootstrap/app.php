@@ -30,5 +30,15 @@ return Application::configure(basePath: dirname(__DIR__))
         ]);
     })
     ->withExceptions(function (Exceptions $exceptions): void {
-        //
+        $exceptions->report(function (\Throwable $e) {
+            // Log Livewire-related errors with full detail
+            if (request()->hasHeader('X-Livewire')) {
+                \Log::error('[Livewire 500] ' . $e->getMessage(), [
+                    'exception' => get_class($e),
+                    'file' => $e->getFile() . ':' . $e->getLine(),
+                    'url' => request()->fullUrl(),
+                    'trace' => array_slice(explode("\n", $e->getTraceAsString()), 0, 15),
+                ]);
+            }
+        });
     })->create();
