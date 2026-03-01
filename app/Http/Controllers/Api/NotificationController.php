@@ -38,7 +38,7 @@ class NotificationController extends Controller
             ->whereNull('read_at')
             ->count();
 
-        return response()->json(['success' => true, 'count' => $count]);
+        return response()->json(['success' => true, 'data' => ['count' => $count]]);
     }
 
     public function destroy(Request $request, int $id)

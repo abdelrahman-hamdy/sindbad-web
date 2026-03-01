@@ -28,6 +28,34 @@ class BookingCalendarWidget extends FullCalendarWidget
     public ?string $filterType = null;
     public ?int $selectedRequestId = null;
 
+    public function boot(): void
+    {
+        $mem = round(memory_get_usage(true) / 1024 / 1024, 1);
+        file_put_contents(storage_path('logs/mem_trace.log'),
+            date('[H:i:s]') . " boot: {$mem}MB\n", FILE_APPEND);
+    }
+
+    public function booted(): void
+    {
+        $mem = round(memory_get_usage(true) / 1024 / 1024, 1);
+        file_put_contents(storage_path('logs/mem_trace.log'),
+            date('[H:i:s]') . " booted: {$mem}MB\n", FILE_APPEND);
+    }
+
+    public function rendering(\Illuminate\View\View $view): void
+    {
+        $mem = round(memory_get_usage(true) / 1024 / 1024, 1);
+        file_put_contents(storage_path('logs/mem_trace.log'),
+            date('[H:i:s]') . " rendering: {$mem}MB\n", FILE_APPEND);
+    }
+
+    public function rendered(\Illuminate\View\View $view): void
+    {
+        $mem = round(memory_get_usage(true) / 1024 / 1024, 1);
+        file_put_contents(storage_path('logs/mem_trace.log'),
+            date('[H:i:s]') . " rendered: {$mem}MB\n", FILE_APPEND);
+    }
+
     public function config(): array
     {
         return [

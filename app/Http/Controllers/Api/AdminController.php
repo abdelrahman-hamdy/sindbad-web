@@ -17,6 +17,7 @@ use App\Services\ReportService;
 use App\Services\RequestService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Log;
 
@@ -31,27 +32,31 @@ class AdminController extends Controller
 
     public function dashboardStats(Request $request): JsonResponse
     {
-        $base = fn($type) => ServiceRequest::where('type', $type);
+        $stats = Cache::remember('dashboard_stats_' . today()->toDateString(), 300, function () {
+            $base = fn($type) => ServiceRequest::where('type', $type);
 
-        return response()->json(['success' => true, 'data' => [
-            'service' => [
-                'total'       => $base('service')->count(),
-                'pending'     => $base('service')->where('status', 'pending')->count(),
-                'assigned'    => $base('service')->where('status', 'assigned')->count(),
-                'in_progress' => $base('service')->where('status', 'in_progress')->count(),
-                'completed'   => $base('service')->where('status', 'completed')->count(),
-                'canceled'    => $base('service')->where('status', 'canceled')->count(),
-            ],
-            'installation' => [
-                'total'     => $base('installation')->count(),
-                'pending'   => $base('installation')->where('status', 'pending')->count(),
-                'completed' => $base('installation')->where('status', 'completed')->count(),
-            ],
-            'technicians'        => User::technicians()->count(),
-            'active_technicians' => User::technicians()->active()->count(),
-            'customers'          => User::customers()->count(),
-            'today_completed'    => ServiceRequest::whereDate('completed_at', today())->where('status', 'completed')->count(),
-        ]]);
+            return [
+                'service' => [
+                    'total'       => $base('service')->count(),
+                    'pending'     => $base('service')->where('status', 'pending')->count(),
+                    'assigned'    => $base('service')->where('status', 'assigned')->count(),
+                    'in_progress' => $base('service')->where('status', 'in_progress')->count(),
+                    'completed'   => $base('service')->where('status', 'completed')->count(),
+                    'canceled'    => $base('service')->where('status', 'canceled')->count(),
+                ],
+                'installation' => [
+                    'total'     => $base('installation')->count(),
+                    'pending'   => $base('installation')->where('status', 'pending')->count(),
+                    'completed' => $base('installation')->where('status', 'completed')->count(),
+                ],
+                'technicians'        => User::technicians()->count(),
+                'active_technicians' => User::technicians()->active()->count(),
+                'customers'          => User::customers()->count(),
+                'today_completed'    => ServiceRequest::whereDate('completed_at', today())->where('status', 'completed')->count(),
+            ];
+        });
+
+        return response()->json(['success' => true, 'data' => $stats]);
     }
 
     public function getUsers(Request $request): JsonResponse
@@ -63,14 +68,14 @@ class AdminController extends Controller
             $query->where(fn($q) => $q->where('name', 'like', "%$s%")->orWhere('phone', 'like', "%$s%")->orWhere('email', 'like', "%$s%"));
         }
 
-        $users = $query->latest()->get();
-
         if ($request->role === 'technician') {
-            $users->each(function ($user) {
-                $user->total_requests = ServiceRequest::where('technician_id', $user->id)->count();
-                $user->completed_requests = ServiceRequest::where('technician_id', $user->id)->where('status', RequestStatus::Completed->value)->count();
-            });
+            $query->withCount([
+                'assignedRequests as total_requests',
+                'assignedRequests as completed_requests' => fn($q) => $q->where('status', RequestStatus::Completed->value),
+            ]);
         }
+
+        $users = $query->latest()->get();
 
         return response()->json(['success' => true, 'data' => UserResource::collection($users)]);
     }
@@ -253,6 +258,10 @@ class AdminController extends Controller
         $request->validate(['user_id' => 'required|integer|exists:users,id', 'service_type' => 'required|string', 'address' => 'required|string', 'latitude' => 'required|numeric', 'longitude' => 'required|numeric', 'scheduled_at' => 'required|date']);
         $owner = User::findOrFail($request->user_id);
         $req = $this->requestService->createRequest($owner, $request->all(), RequestType::Service);
+
+        Cache::forget('dashboard_stats_' . today()->toDateString());
+        Cache::forget('performance_reports_' . today()->toDateString());
+
         return response()->json(['success' => true, 'data' => new RequestResource($req->load(['user', 'technician']))], 201);
     }
 
@@ -261,6 +270,10 @@ class AdminController extends Controller
         $request->validate(['user_id' => 'required|integer|exists:users,id', 'product_type' => 'required|string', 'address' => 'required|string', 'latitude' => 'required|numeric', 'longitude' => 'required|numeric', 'scheduled_at' => 'required|date']);
         $owner = User::findOrFail($request->user_id);
         $req = $this->requestService->createRequest($owner, $request->all(), RequestType::Installation);
+
+        Cache::forget('dashboard_stats_' . today()->toDateString());
+        Cache::forget('performance_reports_' . today()->toDateString());
+
         return response()->json(['success' => true, 'data' => new RequestResource($req->load(['user', 'technician']))], 201);
     }
 
@@ -276,7 +289,7 @@ class AdminController extends Controller
     public function getOdooProducts(Request $request): JsonResponse
     {
         try {
-            $products = $this->odoo->getProducts(100);
+            $products = $this->odoo->getProducts(config('sindbad.odoo_product_limit'));
             return response()->json(['success' => true, 'data' => $products]);
         } catch (\Exception $e) {
             Log::warning('Odoo products fetch failed: ' . $e->getMessage());
@@ -286,7 +299,11 @@ class AdminController extends Controller
 
     public function getPerformanceReports(Request $request): JsonResponse
     {
-        return response()->json(['success' => true, 'data' => $this->reportService->getPerformanceSummary()]);
+        $data = Cache::remember('performance_reports_' . today()->toDateString(), 300, function () {
+            return $this->reportService->getPerformanceSummary();
+        });
+
+        return response()->json(['success' => true, 'data' => $data]);
     }
 
     public function getDailyCompletedRequests(Request $request): JsonResponse

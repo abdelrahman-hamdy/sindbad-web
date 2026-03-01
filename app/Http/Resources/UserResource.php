@@ -18,6 +18,8 @@ class UserResource extends JsonResource
             'is_active' => $this->is_active,
             'odoo_id' => $this->odoo_id,
             'fcm_token' => $this->when($request->user()?->isAdmin(), $this->fcm_token),
+            'total_requests' => $this->when(isset($this->total_requests), $this->total_requests),
+            'completed_requests' => $this->when(isset($this->completed_requests), $this->completed_requests),
             'created_at' => $this->created_at?->toISOString(),
         ];
     }

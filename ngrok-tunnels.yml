@@ -1,0 +1,11 @@
+version: "3"
+tunnels:
+  app:
+    proto: http
+    addr: 80
+    # Valet uses the Host header to route to sindbad-v2.test
+    host_header: sindbad-v2.test
+    domain: percolative-unyielded-taneka.ngrok-free.dev
+  reverb:
+    proto: http
+    addr: 8080

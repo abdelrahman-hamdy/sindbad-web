@@ -110,7 +110,8 @@ class RequestController extends Controller
         try {
             $newStatus = RequestStatus::from($request->status);
             $this->requestService->updateStatus($req, $newStatus, $request->user());
-            return response()->json(['success' => true, 'message' => __('Status updated')]);
+            $req->refresh();
+            return response()->json(['success' => true, 'data' => $req]);
         } catch (\Exception $e) {
             return response()->json(['success' => false, 'message' => $e->getMessage()], 422);
         }
