@@ -10,6 +10,7 @@ use App\Models\User;
 use App\Services\BookingService;
 use App\Services\RequestService;
 use Carbon\Carbon;
+use Illuminate\Support\Facades\Log;
 use Filament\Actions\Action;
 use Filament\Forms\Components\DatePicker;
 use Filament\Forms\Components\Placeholder;
@@ -52,6 +53,7 @@ class BookingCalendarPage extends Page
 
     public function updatedFilterTechnician(): void
     {
+        Log::info('[BookingCalendarPage] updatedFilterTechnician', ['value' => $this->filterTechnician]);
         $this->dispatch('booking-filters-updated',
             technician: $this->filterTechnician ?: null,
             type: $this->filterType ?: null,
@@ -68,6 +70,7 @@ class BookingCalendarPage extends Page
 
     public function openScheduleModal(int $id): void
     {
+        Log::info('[BookingCalendarPage] openScheduleModal', ['id' => $id]);
         $this->schedulingRequestId = $id;
         $this->mountAction('scheduleRequest');
     }
