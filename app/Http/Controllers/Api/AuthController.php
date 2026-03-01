@@ -82,7 +82,7 @@ class AuthController extends Controller
         try {
             // Already activated check
             $user = \App\Models\User::where('phone', $request->phone)->first();
-            if ($user && $user->is_active) {
+            if ($user && $user->is_active && !empty($user->password)) {
                 return response()->json([
                     'success' => false,
                     'message' => __('Account already activated. Please login.'),
