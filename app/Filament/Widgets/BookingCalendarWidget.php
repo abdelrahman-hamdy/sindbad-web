@@ -164,7 +164,7 @@ class BookingCalendarWidget extends FullCalendarWidget
                         ->label(__('Address'))
                         ->content(fn (Get $get) => $get('info_address'))
                         ->columnSpanFull(),
-                ])->columns(3)->collapsible(),
+                ])->columns(3),
 
                 Section::make(__('Edit Assignment'))->schema([
                     Select::make('technician_id')
