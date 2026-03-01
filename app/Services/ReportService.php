@@ -203,14 +203,16 @@ class ReportService
     {
         $typeCounts = Request::select('type', DB::raw('count(*) as count'))
             ->groupBy('type')
-            ->pluck('count', 'type')
+            ->get()
+            ->mapWithKeys(fn($row) => [$row->type->value => (int) $row->count])
             ->toArray();
 
         $serviceSubBreakdown = Request::where('type', 'service')
             ->select('service_type', DB::raw('count(*) as count'))
             ->whereNotNull('service_type')
             ->groupBy('service_type')
-            ->pluck('count', 'service_type')
+            ->get()
+            ->mapWithKeys(fn($row) => [$row->service_type->value => (int) $row->count])
             ->toArray();
 
         return [
@@ -235,7 +237,7 @@ class ReportService
 
         $dateMap = [];
         foreach ($results as $row) {
-            $dateMap[$row->date][$row->type] = $row->count;
+            $dateMap[$row->date][$row->type->value] = $row->count;
         }
 
         $labels           = [];
