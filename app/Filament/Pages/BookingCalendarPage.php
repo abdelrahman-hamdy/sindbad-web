@@ -83,35 +83,32 @@ class BookingCalendarPage extends Page
             ->modalHeading(fn () => __('Schedule Request') . ' #' . $this->schedulingRequestId)
             ->modalWidth('2xl')
             ->fillForm(function () {
+                return [
+                    'req_is_install'       => Request::find($this->schedulingRequestId)?->type === RequestType::Installation,
+                    'technician_id'        => null,
+                    'scheduled_at'         => null,
+                    'install_scheduled_at' => null,
+                    'end_date'             => null,
+                ];
+            })
+            ->schema(function () {
                 $r = Request::with('user')->find($this->schedulingRequestId);
 
                 return [
-                    'req_customer'   => $r?->user?->name ?? '—',
-                    'req_type'       => $r?->type?->label() ?? '—',
-                    'req_address'    => $r?->address ?? '—',
-                    'req_pref_date'  => $r?->scheduled_at?->format('M d, Y') ?? __('No preference'),
-                    'req_is_install'      => $r?->type === RequestType::Installation,
-                    'technician_id'       => null,
-                    'scheduled_at'        => null,
-                    'install_scheduled_at' => null,
-                    'end_date'            => null,
-                ];
-            })
-            ->schema([
                 // Request summary (read-only)
                 Section::make(__('Request Details'))->schema([
                     Placeholder::make('req_customer')
                         ->label(__('Customer'))
-                        ->content(fn (Get $get) => $get('req_customer')),
+                        ->content($r?->user?->name ?? '—'),
                     Placeholder::make('req_type')
                         ->label(__('Type'))
-                        ->content(fn (Get $get) => $get('req_type')),
+                        ->content($r?->type?->label() ?? '—'),
                     Placeholder::make('req_pref_date')
                         ->label(__('Preferred Date'))
-                        ->content(fn (Get $get) => $get('req_pref_date')),
+                        ->content($r?->scheduled_at?->format('M d, Y') ?? __('No preference')),
                     Placeholder::make('req_address')
                         ->label(__('Address'))
-                        ->content(fn (Get $get) => $get('req_address'))
+                        ->content($r?->address ?? '—')
                         ->columnSpanFull(),
                 ])->columns(3),
 
@@ -186,7 +183,8 @@ class BookingCalendarPage extends Page
                     ->required()
                     ->afterOrEqual('install_scheduled_at')
                     ->visible(fn (Get $get) => (bool) $get('req_is_install')),
-            ])
+                ];
+            })
             ->action(function (array $data) {
                 $request = Request::findOrFail($this->schedulingRequestId);
 

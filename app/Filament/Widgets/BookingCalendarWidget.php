@@ -28,30 +28,6 @@ class BookingCalendarWidget extends FullCalendarWidget
     public ?string $filterType = null;
     public ?int $selectedRequestId = null;
 
-    public function bootedInteractsWithActions(): void
-    {
-        $log = fn ($msg) => file_put_contents(storage_path('logs/mem_trace.log'),
-            date('[H:i:s]') . " {$msg} — " . round(memory_get_usage(true) / 1024 / 1024, 1) . "MB\n", FILE_APPEND);
-
-        $log('bootedInteractsWithActions START, mountedActions=' . count($this->mountedActions ?? []));
-
-        if (filled($originallyMountedActionIndex = array_key_last($this->mountedActions))) {
-            $this->originallyMountedActionIndex = $originallyMountedActionIndex;
-        }
-
-        $log('before cacheTraitActions');
-        $this->cacheTraitActions();
-        $log('after cacheTraitActions');
-
-        if (count($this->mountedActions)) {
-            $log('before cacheMountedActions (' . json_encode(array_column($this->mountedActions, 'name')) . ')');
-            $this->cacheMountedActions($this->mountedActions);
-            $log('after cacheMountedActions');
-        }
-
-        $log('bootedInteractsWithActions END');
-    }
-
     public function config(): array
     {
         return [
@@ -166,57 +142,55 @@ class BookingCalendarWidget extends FullCalendarWidget
                 $r = Request::with(['user', 'technician'])->find($this->selectedRequestId);
 
                 return [
-                    'info_customer'  => $r?->user?->name ?? '—',
-                    'info_type'      => $r?->type?->label() ?? '—',
-                    'info_status'    => $r?->status?->label() ?? '—',
-                    'info_address'   => $r?->address ?? '—',
-                    'info_date'      => $r?->scheduled_at?->format('M d, Y') ?? '—',
-                    'technician_id'  => $r?->technician_id,
-                    'scheduled_at'   => $r?->scheduled_at?->toDateString(),
-                    'end_date'       => $r?->end_date?->toDateString(),
-                    'status'         => $r?->status?->value,
+                    'technician_id'   => $r?->technician_id,
+                    'scheduled_at'    => $r?->scheduled_at?->toDateString(),
+                    'end_date'        => $r?->end_date?->toDateString(),
+                    'status'          => $r?->status?->value,
                     'is_installation' => $r?->type === RequestType::Installation,
                 ];
             })
-            ->schema([
-                Section::make(__('Request Info'))->schema([
-                    Placeholder::make('info_customer')
-                        ->label(__('Customer'))
-                        ->content(fn (Get $get) => $get('info_customer')),
-                    Placeholder::make('info_type')
-                        ->label(__('Type'))
-                        ->content(fn (Get $get) => $get('info_type')),
-                    Placeholder::make('info_status')
-                        ->label(__('Current Status'))
-                        ->content(fn (Get $get) => $get('info_status')),
-                    Placeholder::make('info_address')
-                        ->label(__('Address'))
-                        ->content(fn (Get $get) => $get('info_address'))
-                        ->columnSpanFull(),
-                ])->columns(3),
+            ->schema(function () {
+                $r = Request::with(['user', 'technician'])->find($this->selectedRequestId);
 
-                Section::make(__('Edit Assignment'))->schema([
-                    Select::make('technician_id')
-                        ->label(__('Technician'))
-                        ->options(User::technicians()->active()->pluck('name', 'id'))
-                        ->searchable(),
-                    Select::make('status')
-                        ->label(__('Status'))
-                        ->options(
-                            collect(RequestStatus::cases())
-                                ->mapWithKeys(fn ($s) => [$s->value => $s->label()])
-                        )
-                        ->required(),
-                    DatePicker::make('scheduled_at')
-                        ->label(__('Scheduled Date'))
-                        ->required(),
-                    DatePicker::make('end_date')
-                        ->label(__('End Date'))
-                        // Use form state instead of a separate DB query
-                        ->visible(fn (Get $get) => (bool) $get('is_installation'))
-                        ->afterOrEqual('scheduled_at'),
-                ])->columns(2),
-            ])
+                return [
+                    Section::make(__('Request Info'))->schema([
+                        Placeholder::make('info_customer')
+                            ->label(__('Customer'))
+                            ->content($r?->user?->name ?? '—'),
+                        Placeholder::make('info_type')
+                            ->label(__('Type'))
+                            ->content($r?->type?->label() ?? '—'),
+                        Placeholder::make('info_status')
+                            ->label(__('Current Status'))
+                            ->content($r?->status?->label() ?? '—'),
+                        Placeholder::make('info_address')
+                            ->label(__('Address'))
+                            ->content($r?->address ?? '—')
+                            ->columnSpanFull(),
+                    ])->columns(3),
+
+                    Section::make(__('Edit Assignment'))->schema([
+                        Select::make('technician_id')
+                            ->label(__('Technician'))
+                            ->options(User::technicians()->active()->pluck('name', 'id'))
+                            ->searchable(),
+                        Select::make('status')
+                            ->label(__('Status'))
+                            ->options(
+                                collect(RequestStatus::cases())
+                                    ->mapWithKeys(fn ($s) => [$s->value => $s->label()])
+                            )
+                            ->required(),
+                        DatePicker::make('scheduled_at')
+                            ->label(__('Scheduled Date'))
+                            ->required(),
+                        DatePicker::make('end_date')
+                            ->label(__('End Date'))
+                            ->visible(fn (Get $get) => (bool) $get('is_installation'))
+                            ->afterOrEqual('scheduled_at'),
+                    ])->columns(2),
+                ];
+            })
             ->action(function (array $data) {
                 $request = Request::findOrFail($this->selectedRequestId);
 
