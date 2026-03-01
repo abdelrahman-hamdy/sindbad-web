@@ -7,6 +7,7 @@ use App\Enums\RequestType;
 use App\Models\Request;
 use App\Models\User;
 use Exception;
+use App\Services\BookingService;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
 
@@ -46,6 +47,17 @@ class RequestService
 
     public function assignTechnician(Request $request, int $technicianId, array $timing = []): Request
     {
+        // Run booking validation when precise datetime slots are provided
+        if (! empty($timing['scheduled_start_at']) && ! empty($timing['scheduled_end_at'])) {
+            $start = \Carbon\Carbon::parse($timing['scheduled_start_at']);
+            $end   = \Carbon\Carbon::parse($timing['scheduled_end_at']);
+            $type  = $request->type instanceof \App\Enums\RequestType
+                ? $request->type->value
+                : (string) $request->type;
+
+            app(BookingService::class)->validateAssignment($technicianId, $start, $end, $type);
+        }
+
         DB::transaction(function () use ($request, $technicianId, $timing) {
             $request->update(array_merge([
                 'technician_id' => $technicianId,
@@ -160,11 +172,23 @@ class RequestService
                 RequestStatus::InProgress->value,
             ])
             ->where(function ($q) use ($start, $end) {
-                $q->whereBetween('scheduled_at', [$start, $end])
-                  ->orWhereBetween('end_date', [$start, $end])
-                  ->orWhere(function ($q) use ($start, $end) {
-                      $q->where('scheduled_at', '<=', $start)->where('end_date', '>=', $end);
-                  });
+                // Check against precise datetime columns when available
+                $q->where(function ($q2) use ($start, $end) {
+                    $q2->whereNotNull('scheduled_start_at')
+                       ->where('scheduled_start_at', '<', $end)
+                       ->where('scheduled_end_at', '>', $start);
+                })->orWhere(function ($q2) use ($start, $end) {
+                    // Fall back to legacy date columns for older records
+                    $q2->whereNull('scheduled_start_at')
+                       ->where(function ($q3) use ($start, $end) {
+                           $q3->whereBetween('scheduled_at', [$start, $end])
+                              ->orWhereBetween('end_date', [$start, $end])
+                              ->orWhere(function ($q4) use ($start, $end) {
+                                  $q4->where('scheduled_at', '<=', $start)
+                                     ->where('end_date', '>=', $end);
+                              });
+                       });
+                });
             })
             ->exists();
     }

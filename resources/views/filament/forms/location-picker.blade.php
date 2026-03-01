@@ -167,36 +167,67 @@
                 }
             },
 
-            parseLink() {
-                this.linkError = '';
-                const url = this.mapsLink.trim();
-                if (!url) return;
-
-                let lat = null, lng = null;
+            extractCoords(url) {
+                let lat = null, lng = null, m;
 
                 // ?q=LAT,LNG or &q=LAT,LNG
-                let m = url.match(/[?&]q=(-?\d+\.?\d*),\s*(-?\d+\.?\d*)/);
+                m = url.match(/[?&]q=(-?\d+\.?\d*),\s*(-?\d+\.?\d*)/);
                 if (m) { lat = parseFloat(m[1]); lng = parseFloat(m[2]); }
 
                 // /@LAT,LNG,zoom
-                if (!lat) {
-                    m = url.match(/@(-?\d+\.?\d*),\s*(-?\d+\.?\d*)/);
+                if (lat === null) {
+                    m = url.match(/\/@(-?\d+\.?\d*),\s*(-?\d+\.?\d*)/);
                     if (m) { lat = parseFloat(m[1]); lng = parseFloat(m[2]); }
                 }
 
                 // !3d LAT !4d LNG (embedded in place URLs)
-                if (!lat) {
+                if (lat === null) {
                     m = url.match(/!3d(-?\d+\.?\d*)!4d(-?\d+\.?\d*)/);
                     if (m) { lat = parseFloat(m[1]); lng = parseFloat(m[2]); }
                 }
 
-                if (!lat || !lng || isNaN(lat) || isNaN(lng)) {
+                if (lat !== null && lng !== null && !isNaN(lat) && !isNaN(lng)) {
+                    return [lat, lng];
+                }
+                return null;
+            },
+
+            async parseLink() {
+                this.linkError = '';
+                const url = this.mapsLink.trim();
+                if (!url) return;
+
+                // Try extracting coordinates directly from the URL
+                let coords = this.extractCoords(url);
+
+                // If that failed, try resolving the URL server-side (handles shortened links)
+                if (!coords) {
+                    try {
+                        const csrf = document.querySelector('meta[name="csrf-token"]')?.content ?? '';
+                        const res = await fetch('/admin/resolve-url', {
+                            method: 'POST',
+                            headers: {
+                                'Content-Type': 'application/json',
+                                'X-CSRF-TOKEN': csrf,
+                            },
+                            body: JSON.stringify({ url }),
+                        });
+                        if (res.ok) {
+                            const data = await res.json();
+                            if (data.url) coords = this.extractCoords(data.url);
+                        }
+                    } catch {
+                        // network error — fall through to the error message below
+                    }
+                }
+
+                if (!coords) {
                     this.linkError = @js(__('Could not extract coordinates. Try copying the share link directly from Google Maps.'));
                     return;
                 }
 
                 this.activeTab = 'map';
-                this.$nextTick(() => this.setLocation(lat, lng));
+                this.$nextTick(() => this.setLocation(coords[0], coords[1]));
             },
         };
     });

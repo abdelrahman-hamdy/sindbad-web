@@ -236,28 +236,75 @@ class ServiceRequestResource extends Resource
                     ->color('info')
                     ->visible(fn(Request $record) => !in_array($record->status, [RequestStatus::Completed, RequestStatus::Canceled]))
                     ->fillForm(fn(Request $record) => [
-                        'customer_preferred_date' => $record->scheduled_at?->format('M d, Y') ?? __('Not set'),
-                        'scheduled_at' => $record->scheduled_at,
+                        'customer_preferred_date' => $record->scheduled_at?->toDateString(),
+                        'technician_id' => $record->technician_id,
+                        'scheduled_date' => $record->scheduled_start_at?->toDateString() ?? $record->scheduled_at?->toDateString(),
                     ])
                     ->form([
-                        Forms\Components\TextInput::make('customer_preferred_date')
+                        Forms\Components\Placeholder::make('customer_preferred_date_info')
                             ->label(__("Customer's Preferred Date"))
-                            ->disabled()
-                            ->dehydrated(false)
+                            ->content(fn(\Filament\Schemas\Components\Utilities\Get $get) => $get('customer_preferred_date')
+                                ? \Carbon\Carbon::parse($get('customer_preferred_date'))->format('M d, Y')
+                                : __('Not set'))
                             ->columnSpanFull(),
                         Forms\Components\Select::make('technician_id')
                             ->label(__('Technician'))
                             ->options(User::technicians()->active()->pluck('name', 'id'))
                             ->searchable()
-                            ->required(),
-                        Grid::make(2)->schema([
-                            Forms\Components\DatePicker::make('scheduled_at')->label(__('Start Date')),
-                            Forms\Components\DatePicker::make('end_date')->label(__('End Date')),
-                        ]),
+                            ->required()
+                            ->live(),
+                        Forms\Components\DatePicker::make('scheduled_date')
+                            ->label(__('Appointment Date'))
+                            ->required()
+                            ->live()
+                            ->minDate(today()),
+                        Forms\Components\Select::make('time_slot')
+                            ->label(__('Time Slot'))
+                            ->required()
+                            ->hidden(fn(\Filament\Schemas\Components\Utilities\Get $get) => !$get('technician_id') || !$get('scheduled_date'))
+                            ->options(function (\Filament\Schemas\Components\Utilities\Get $get) {
+                                $techId = $get('technician_id');
+                                $date = $get('scheduled_date');
+                                if (!$techId || !$date) return [];
+
+                                try {
+                                    $slots = app(\App\Services\BookingService::class)
+                                        ->getServiceSlotsForDate(\Carbon\Carbon::parse($date));
+
+                                    if (!isset($slots[$techId])) return [];
+
+                                    return collect($slots[$techId]['slots'] ?? [])
+                                        ->filter(fn($s) => $s['available'])
+                                        ->mapWithKeys(fn($s) => [
+                                            $s['start'] . '|' . $s['end'] => $s['start'] . ' - ' . $s['end']
+                                        ])
+                                        ->toArray();
+                                } catch (\Throwable) {
+                                    return [];
+                                }
+                            })
+                            ->helperText(fn(\Filament\Schemas\Components\Utilities\Get $get) => !$get('technician_id') || !$get('scheduled_date')
+                                ? __('Select technician and date first') : null),
+                        Forms\Components\Hidden::make('customer_preferred_date'),
                     ])
                     ->action(function (Request $record, array $data) {
-                        app(RequestService::class)->assignTechnician($record, $data['technician_id'], $data);
-                        Notification::make()->title(__('Technician assigned'))->success()->send();
+                        $timing = [];
+                        if (!empty($data['time_slot'])) {
+                            [$slotStart, $slotEnd] = explode('|', $data['time_slot']);
+                            $date = $data['scheduled_date'];
+                            $timing['scheduled_start_at'] = $date . ' ' . $slotStart . ':00';
+                            $timing['scheduled_end_at']   = $date . ' ' . $slotEnd . ':00';
+                            $timing['scheduled_at']       = $date;
+                        } elseif (!empty($data['scheduled_date'])) {
+                            $timing['scheduled_at'] = $data['scheduled_date'];
+                        }
+
+                        try {
+                            app(RequestService::class)->assignTechnician($record, $data['technician_id'], $timing);
+                            Notification::make()->title(__('Technician assigned successfully'))->success()->send();
+                        } catch (\Exception $e) {
+                            Notification::make()->title(__('Booking Conflict'))->body($e->getMessage())->danger()->send();
+                        }
                     }),
                 Action::make('updateStatus')
                     ->label(__('Change Status'))

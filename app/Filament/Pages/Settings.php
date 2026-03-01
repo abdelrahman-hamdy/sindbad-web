@@ -4,6 +4,7 @@ namespace App\Filament\Pages;
 
 use App\Models\AppSetting;
 use Filament\Actions\Action as PageAction;
+use Filament\Forms\Components\CheckboxList;
 use Filament\Forms\Components\Select;
 use Filament\Forms\Components\TextInput;
 use Filament\Forms\Components\Toggle;
@@ -48,6 +49,14 @@ class Settings extends Page
     public bool $enforce_financial_eligibility = false;
     public bool $block_pending_requests = false;
 
+    // Booking settings
+    public string $booking_work_start = '08:00';
+    public string $booking_work_end = '17:00';
+    public string $booking_service_slot_minutes = '120';
+    public string $booking_max_service_per_tech_per_day = '4';
+    public string $booking_max_concurrent_installation = '1';
+    public array $booking_work_days_array = [0, 1, 2, 3, 4];
+
     // Admin profile fields
     public string $admin_name = '';
     public string $admin_phone = '';
@@ -59,6 +68,13 @@ class Settings extends Page
         $this->dashboard_default_filter      = AppSetting::get('dashboard_default_filter', 'month');
         $this->enforce_financial_eligibility = AppSetting::bool('enforce_financial_eligibility');
         $this->block_pending_requests        = AppSetting::bool('block_pending_requests');
+
+        $this->booking_work_start                  = AppSetting::get('booking_work_start', '08:00');
+        $this->booking_work_end                    = AppSetting::get('booking_work_end', '17:00');
+        $this->booking_service_slot_minutes        = AppSetting::get('booking_service_slot_minutes', '120');
+        $this->booking_max_service_per_tech_per_day = AppSetting::get('booking_max_service_per_tech_per_day', '4');
+        $this->booking_max_concurrent_installation = AppSetting::get('booking_max_concurrent_installation', '1');
+        $this->booking_work_days_array             = json_decode(AppSetting::get('booking_work_days', '[0,1,2,3,4]'), true) ?? [0, 1, 2, 3, 4];
 
         $user             = auth()->user();
         $this->admin_name  = $user->name ?? '';
@@ -113,6 +129,50 @@ class Settings extends Page
                             ]),
                         ])->columns(1),
 
+                    Tab::make(__('Booking Rules'))
+                        ->icon('heroicon-o-calendar-days')
+                        ->schema([
+                            TextInput::make('booking_work_start')
+                                ->label(__('Work Start Time'))
+                                ->helperText(__('24h format, e.g. 08:00'))
+                                ->required(),
+                            TextInput::make('booking_work_end')
+                                ->label(__('Work End Time'))
+                                ->helperText(__('24h format, e.g. 17:00'))
+                                ->required(),
+                            TextInput::make('booking_service_slot_minutes')
+                                ->label(__('Service Slot Duration (minutes)'))
+                                ->numeric()
+                                ->required(),
+                            TextInput::make('booking_max_service_per_tech_per_day')
+                                ->label(__('Max Service Requests per Technician per Day'))
+                                ->numeric()
+                                ->required(),
+                            TextInput::make('booking_max_concurrent_installation')
+                                ->label(__('Max Concurrent Installations per Technician'))
+                                ->numeric()
+                                ->required(),
+                            CheckboxList::make('booking_work_days_array')
+                                ->label(__('Working Days'))
+                                ->options([
+                                    '0' => __('Sunday'),
+                                    '1' => __('Monday'),
+                                    '2' => __('Tuesday'),
+                                    '3' => __('Wednesday'),
+                                    '4' => __('Thursday'),
+                                    '5' => __('Friday'),
+                                    '6' => __('Saturday'),
+                                ])
+                                ->columns(4)
+                                ->columnSpanFull(),
+                            Actions::make([
+                                PageAction::make('saveBookingSettings')
+                                    ->label(__('Save'))
+                                    ->icon('heroicon-o-check')
+                                    ->action('saveBookingSettings'),
+                            ]),
+                        ])->columns(2),
+
                     Tab::make(__('My Profile'))
                         ->icon('heroicon-o-user-circle')
                         ->schema([
@@ -158,6 +218,26 @@ class Settings extends Page
     {
         AppSetting::set('dashboard_default_filter', $this->dashboard_default_filter);
         Notification::make()->title(__('Dashboard settings saved'))->success()->send();
+    }
+
+    public function saveBookingSettings(): void
+    {
+        $this->validate([
+            'booking_work_start'                   => 'required|string',
+            'booking_work_end'                     => 'required|string',
+            'booking_service_slot_minutes'         => 'required|numeric|min:15',
+            'booking_max_service_per_tech_per_day' => 'required|numeric|min:1',
+            'booking_max_concurrent_installation'  => 'required|numeric|min:1',
+        ]);
+
+        AppSetting::set('booking_work_start', $this->booking_work_start);
+        AppSetting::set('booking_work_end', $this->booking_work_end);
+        AppSetting::set('booking_service_slot_minutes', $this->booking_service_slot_minutes);
+        AppSetting::set('booking_max_service_per_tech_per_day', $this->booking_max_service_per_tech_per_day);
+        AppSetting::set('booking_max_concurrent_installation', $this->booking_max_concurrent_installation);
+        AppSetting::set('booking_work_days', json_encode(array_map('intval', $this->booking_work_days_array)));
+
+        Notification::make()->title(__('Booking settings saved successfully'))->success()->send();
     }
 
     public function saveSettings(): void

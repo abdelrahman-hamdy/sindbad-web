@@ -230,7 +230,9 @@ class UserResource extends Resource
 
     public static function getRelations(): array
     {
-        return [];
+        return [
+            UserResource\RelationManagers\TechnicianHolidaysRelationManager::class,
+        ];
     }
 
     public static function getPages(): array

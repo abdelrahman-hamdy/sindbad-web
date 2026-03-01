@@ -77,6 +77,11 @@ class User extends Authenticatable implements FilamentUser
         return $this->hasOne(TechnicianLocation::class, 'technician_id');
     }
 
+    public function holidays()
+    {
+        return $this->hasMany(TechnicianHoliday::class, 'technician_id');
+    }
+
     public function scopeAdmins($query)
     {
         return $query->where('role', UserRole::Admin->value);

@@ -29,6 +29,8 @@ class Request extends Model implements HasMedia
         'latitude',
         'longitude',
         'scheduled_at',
+        'scheduled_start_at',
+        'scheduled_end_at',
         'end_date',
         'completed_at',
         'technician_accepted_at',
@@ -52,6 +54,8 @@ class Request extends Model implements HasMedia
         'details' => 'array',
         'readiness_details' => 'array',
         'scheduled_at' => 'date',
+        'scheduled_start_at' => 'datetime',
+        'scheduled_end_at' => 'datetime',
         'end_date' => 'date',
         'completed_at' => 'datetime',
         'technician_accepted_at' => 'datetime',
@@ -126,6 +130,8 @@ class Request extends Model implements HasMedia
 
     public function getInvoicePrefixAttribute(): string
     {
-        return $this->isService() ? 'T-' : 'B-';
+        return $this->isService()
+            ? config('sindbad.request_prefix_service')
+            : config('sindbad.request_prefix_installation');
     }
 }

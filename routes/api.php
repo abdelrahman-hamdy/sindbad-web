@@ -46,6 +46,9 @@ Route::middleware(['auth:sanctum', \App\Http\Middleware\EnsureUserIsActive::clas
     Route::get('/notifications/unread-count', [NotificationController::class, 'unreadCount']);
     Route::delete('/notifications/{id}', [NotificationController::class, 'destroy']);
 
+    // Available booking slots
+    Route::get('/available-slots', [\App\Http\Controllers\Api\BookingController::class, 'availableSlots']);
+
     // Service Requests (static routes before dynamic /{id})
     Route::get('/service-requests/my-orders', [RequestController::class, 'getMyOrders']);
     Route::get('/service-requests/check-eligibility', [RequestController::class, 'checkEligibility']);

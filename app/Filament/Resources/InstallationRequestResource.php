@@ -241,28 +241,39 @@ class InstallationRequestResource extends Resource
                     ->color('info')
                     ->visible(fn(Request $record) => !in_array($record->status, [RequestStatus::Completed, RequestStatus::Canceled]))
                     ->fillForm(fn(Request $record) => [
-                        'customer_preferred_date' => $record->scheduled_at?->format('M d, Y') ?? __('Not set'),
-                        'scheduled_at' => $record->scheduled_at,
+                        'technician_id' => $record->technician_id,
+                        'scheduled_at' => $record->scheduled_at?->toDateString(),
+                        'end_date' => $record->end_date?->toDateString(),
                     ])
                     ->form([
-                        Forms\Components\TextInput::make('customer_preferred_date')
-                            ->label(__("Customer's Preferred Date"))
-                            ->disabled()
-                            ->dehydrated(false)
-                            ->columnSpanFull(),
                         Forms\Components\Select::make('technician_id')
                             ->label(__('Technician'))
                             ->options(User::technicians()->active()->pluck('name', 'id'))
                             ->searchable()
                             ->required(),
-                        Grid::make(2)->schema([
-                            Forms\Components\DatePicker::make('scheduled_at')->label(__('Start Date')),
-                            Forms\Components\DatePicker::make('end_date')->label(__('End Date')),
-                        ]),
+                        Forms\Components\DatePicker::make('scheduled_at')
+                            ->label(__('Installation Start Date'))
+                            ->required()
+                            ->minDate(today()),
+                        Forms\Components\DatePicker::make('end_date')
+                            ->label(__('Installation End Date'))
+                            ->required()
+                            ->afterOrEqual('scheduled_at'),
                     ])
                     ->action(function (Request $record, array $data) {
-                        app(RequestService::class)->assignTechnician($record, $data['technician_id'], $data);
-                        Notification::make()->title(__('Technician assigned'))->success()->send();
+                        $timing = [
+                            'scheduled_at'       => $data['scheduled_at'],
+                            'end_date'           => $data['end_date'],
+                            'scheduled_start_at' => $data['scheduled_at'] . ' 08:00:00',
+                            'scheduled_end_at'   => $data['end_date'] . ' 17:00:00',
+                        ];
+
+                        try {
+                            app(RequestService::class)->assignTechnician($record, $data['technician_id'], $timing);
+                            Notification::make()->title(__('Technician assigned successfully'))->success()->send();
+                        } catch (\Exception $e) {
+                            Notification::make()->title(__('Booking Conflict'))->body($e->getMessage())->danger()->send();
+                        }
                     }),
                 Action::make('updateStatus')
                     ->label(__('Change Status'))
