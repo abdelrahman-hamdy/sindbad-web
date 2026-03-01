@@ -47,15 +47,14 @@ class RequestService
 
     public function assignTechnician(Request $request, int $technicianId, array $timing = []): Request
     {
-        // Run booking validation when precise datetime slots are provided
-        if (! empty($timing['scheduled_start_at']) && ! empty($timing['scheduled_end_at'])) {
-            $start = \Carbon\Carbon::parse($timing['scheduled_start_at']);
-            $end   = \Carbon\Carbon::parse($timing['scheduled_end_at']);
-            $type  = $request->type instanceof \App\Enums\RequestType
+        // Run booking validation whenever a scheduled date is provided
+        if (! empty($timing['scheduled_at'])) {
+            $date = \Carbon\Carbon::parse($timing['scheduled_at']);
+            $type = $request->type instanceof \App\Enums\RequestType
                 ? $request->type->value
                 : (string) $request->type;
 
-            app(BookingService::class)->validateAssignment($technicianId, $start, $end, $type);
+            app(BookingService::class)->validateAssignment($technicianId, $date, $type);
         }
 
         DB::transaction(function () use ($request, $technicianId, $timing) {

@@ -50,9 +50,6 @@ class Settings extends Page
     public bool $block_pending_requests = false;
 
     // Booking settings
-    public string $booking_work_start = '08:00';
-    public string $booking_work_end = '17:00';
-    public string $booking_service_slot_minutes = '120';
     public string $booking_max_service_per_tech_per_day = '4';
     public string $booking_max_concurrent_installation = '1';
     public array $booking_work_days_array = [0, 1, 2, 3, 4];
@@ -69,9 +66,6 @@ class Settings extends Page
         $this->enforce_financial_eligibility = AppSetting::bool('enforce_financial_eligibility');
         $this->block_pending_requests        = AppSetting::bool('block_pending_requests');
 
-        $this->booking_work_start                  = AppSetting::get('booking_work_start', '08:00');
-        $this->booking_work_end                    = AppSetting::get('booking_work_end', '17:00');
-        $this->booking_service_slot_minutes        = AppSetting::get('booking_service_slot_minutes', '120');
         $this->booking_max_service_per_tech_per_day = AppSetting::get('booking_max_service_per_tech_per_day', '4');
         $this->booking_max_concurrent_installation = AppSetting::get('booking_max_concurrent_installation', '1');
         $this->booking_work_days_array             = json_decode(AppSetting::get('booking_work_days', '[0,1,2,3,4]'), true) ?? [0, 1, 2, 3, 4];
@@ -132,18 +126,6 @@ class Settings extends Page
                     Tab::make(__('Booking Rules'))
                         ->icon('heroicon-o-calendar-days')
                         ->schema([
-                            TextInput::make('booking_work_start')
-                                ->label(__('Work Start Time'))
-                                ->helperText(__('24h format, e.g. 08:00'))
-                                ->required(),
-                            TextInput::make('booking_work_end')
-                                ->label(__('Work End Time'))
-                                ->helperText(__('24h format, e.g. 17:00'))
-                                ->required(),
-                            TextInput::make('booking_service_slot_minutes')
-                                ->label(__('Service Slot Duration (minutes)'))
-                                ->numeric()
-                                ->required(),
                             TextInput::make('booking_max_service_per_tech_per_day')
                                 ->label(__('Max Service Requests per Technician per Day'))
                                 ->numeric()
@@ -223,16 +205,10 @@ class Settings extends Page
     public function saveBookingSettings(): void
     {
         $this->validate([
-            'booking_work_start'                   => 'required|string',
-            'booking_work_end'                     => 'required|string',
-            'booking_service_slot_minutes'         => 'required|numeric|min:15',
             'booking_max_service_per_tech_per_day' => 'required|numeric|min:1',
             'booking_max_concurrent_installation'  => 'required|numeric|min:1',
         ]);
 
-        AppSetting::set('booking_work_start', $this->booking_work_start);
-        AppSetting::set('booking_work_end', $this->booking_work_end);
-        AppSetting::set('booking_service_slot_minutes', $this->booking_service_slot_minutes);
         AppSetting::set('booking_max_service_per_tech_per_day', $this->booking_max_service_per_tech_per_day);
         AppSetting::set('booking_max_concurrent_installation', $this->booking_max_concurrent_installation);
         AppSetting::set('booking_work_days', json_encode(array_map('intval', $this->booking_work_days_array)));

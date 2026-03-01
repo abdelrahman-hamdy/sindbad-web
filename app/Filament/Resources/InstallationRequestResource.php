@@ -87,7 +87,7 @@ class InstallationRequestResource extends Resource
                                 })->toArray();
                             }),
                         Forms\Components\DatePicker::make('scheduled_at')->label(__('Scheduled Date'))->required(),
-                        Forms\Components\DatePicker::make('end_date')->label(__('End Date')),
+                        Forms\Components\DatePicker::make('end_date')->label(__('End Date'))->required()->afterOrEqual('scheduled_at'),
                     ])->columns(2),
 
                     Section::make(__('Installation Details'))->schema([

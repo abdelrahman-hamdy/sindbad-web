@@ -2,16 +2,20 @@
 
 namespace App\Http\Controllers\Api;
 
+use App\Enums\RequestStatus;
 use App\Http\Controllers\Controller;
+use App\Models\AppSetting;
+use App\Models\Request;
+use App\Models\User;
 use App\Services\BookingService;
 use Carbon\Carbon;
-use Illuminate\Http\Request;
+use Illuminate\Http\Request as HttpRequest;
 
 class BookingController extends Controller
 {
     public function __construct(private BookingService $booking) {}
 
-    public function availableSlots(Request $request)
+    public function availableSlots(HttpRequest $request)
     {
         $request->validate([
             'date'         => 'required|date',
@@ -23,35 +27,30 @@ class BookingController extends Controller
         if ($request->request_type === 'service') {
             if (! $this->booking->isWorkingDay($date)) {
                 return response()->json([
-                    'date'  => $date->toDateString(),
-                    'slots' => [],
-                    'message' => 'Not a working day',
+                    'date'      => $date->toDateString(),
+                    'available' => false,
+                    'slots'     => [],
+                    'message'   => 'Not a working day',
                 ]);
             }
 
-            $techSlots = $this->booking->getServiceSlotsForDate($date);
+            $maxPerDay  = (int) AppSetting::get('booking_max_service_per_tech_per_day', 4);
+            $techCount  = User::technicians()->active()->count();
+            $totalCapacity = $maxPerDay * $techCount;
 
-            // Aggregate across all technicians: a slot is available if ANY tech is free
-            $aggregated = [];
-            foreach ($techSlots as $techData) {
-                foreach ($techData['slots'] as $slot) {
-                    $key = $slot['start'];
-                    if (! isset($aggregated[$key])) {
-                        $aggregated[$key] = [
-                            'start'     => $slot['start'],
-                            'end'       => $slot['end'],
-                            'available' => false,
-                        ];
-                    }
-                    if ($slot['available']) {
-                        $aggregated[$key]['available'] = true;
-                    }
-                }
-            }
+            $booked = Request::where('type', 'service')
+                ->whereIn('status', [
+                    RequestStatus::Assigned->value,
+                    RequestStatus::OnWay->value,
+                    RequestStatus::InProgress->value,
+                ])
+                ->whereDate('scheduled_at', $date->toDateString())
+                ->count();
 
             return response()->json([
-                'date'  => $date->toDateString(),
-                'slots' => array_values($aggregated),
+                'date'      => $date->toDateString(),
+                'available' => $booked < $totalCapacity,
+                'slots'     => [], // no more time slots — kept for API compat
             ]);
         }
 
