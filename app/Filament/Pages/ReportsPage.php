@@ -21,6 +21,7 @@ class ReportsPage extends Page
     public static function getNavigationSort(): ?int { return 11; }
 
     public string $period = '30';
+    public string $trendPeriod = '30';
 
     public array $stats = [];
     public array $filteredStats = [];
@@ -31,29 +32,36 @@ class ReportsPage extends Page
     public array $latestRatings = [];
     public array $ratingBreakdown = [];
     public array $typeBreakdown = [];
+    public array $trendData = [];
     public float $avgCompletion = 0.0;
     public string $dailyDate = '';
     public array $dailyActivity = [];
 
     public function mount(ReportService $service): void
     {
-        $this->stats          = $service->getPerformanceSummary();
-        $this->filteredStats  = $service->getFilteredStats($this->period);
-        $this->ratingStats    = $service->getRatingStats();
-        $this->leaderboard    = $service->getLeaderboard(5)->toArray();
+        $this->stats            = $service->getPerformanceSummary();
+        $this->filteredStats    = $service->getFilteredStats($this->period);
+        $this->ratingStats      = $service->getRatingStats();
+        $this->leaderboard      = $service->getLeaderboard(5)->toArray();
         $this->bottomPerformers = $service->getBottomPerformers(5)->toArray();
-        $this->topCustomers   = $service->getTopCustomers(10);
-        $this->latestRatings  = $service->getLatestRatings(20);
-        $this->ratingBreakdown = $service->getRatingBreakdown();
-        $this->typeBreakdown  = $service->getServiceTypeBreakdown();
-        $this->avgCompletion  = $service->getAvgCompletionTime();
-        $this->dailyDate      = now()->format('Y-m-d');
+        $this->topCustomers     = $service->getTopCustomers(10);
+        $this->latestRatings    = $service->getLatestRatings(20);
+        $this->ratingBreakdown  = $service->getRatingBreakdown();
+        $this->typeBreakdown    = $service->getServiceTypeBreakdown();
+        $this->avgCompletion    = $service->getAvgCompletionTime();
+        $this->trendData        = $service->getRequestTrendsGrouped(30);
+        $this->dailyDate        = now()->format('Y-m-d');
         $this->loadDailyActivity();
     }
 
     public function updatedPeriod(): void
     {
         $this->filteredStats = app(ReportService::class)->getFilteredStats($this->period);
+    }
+
+    public function updatedTrendPeriod(): void
+    {
+        $this->trendData = app(ReportService::class)->getRequestTrendsGrouped((int) $this->trendPeriod);
     }
 
     public function loadDailyActivity(): void

@@ -1,4 +1,9 @@
 <x-filament-panels::page>
+@once
+    @push('styles')
+        <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+    @endpush
+@endonce
 @php
     $medals = ['🥇', '🥈', '🥉'];
     $starSvg = '<svg class="inline h-4 w-4 text-amber-400" fill="currentColor" viewBox="0 0 20 20"><path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z"/></svg>';
@@ -118,7 +123,69 @@
 
     {{-- Trends Chart --}}
     <div class="lg:col-span-2">
-        <livewire:request-trends-chart-widget />
+        <div class="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 overflow-hidden">
+            {{-- Header --}}
+            <div class="flex items-center justify-between px-5 py-3 border-b border-gray-100 dark:border-gray-700">
+                <div class="flex items-center gap-2">
+                    <svg class="w-4 h-4 text-[#008BA0]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 12l3-3 3 3 4-4M8 21l4-4 4 4M3 4h18M4 4h16v12a1 1 0 01-1 1H5a1 1 0 01-1-1V4z"/>
+                    </svg>
+                    <h3 class="text-sm font-semibold text-gray-700 dark:text-gray-200">{{ __('Request Volume Trend') }}</h3>
+                </div>
+                <div class="flex gap-1">
+                    @foreach(['7' => '7D', '30' => '30D', '90' => '90D'] as $tv => $tl)
+                        <button
+                            wire:click="$set('trendPeriod', '{{ $tv }}')"
+                            class="px-2.5 py-1 text-xs font-semibold rounded-md transition-all
+                                {{ $trendPeriod === $tv
+                                    ? 'bg-[#008BA0] text-white shadow-sm dark:bg-cyan-600'
+                                    : 'bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-600' }}"
+                        >
+                            {{ $tl }}
+                        </button>
+                    @endforeach
+                </div>
+            </div>
+            {{-- Chart canvas — wire:ignore keeps Alpine/Chart.js in control, $wire.$watch re-renders on data change --}}
+            <div class="p-4"
+                x-data="{
+                    chart: null,
+                    init() {
+                        if (typeof Chart === 'undefined') return;
+                        this.build(@json($trendData));
+                        $wire.$watch('trendData', (data) => this.build(data));
+                    },
+                    build(data) {
+                        if (this.chart) this.chart.destroy();
+                        const isDark = document.documentElement.classList.contains('dark');
+                        const gridColor = isDark ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.06)';
+                        const tickColor = isDark ? '#9ca3af' : '#6b7280';
+                        this.chart = new Chart(this.$refs.canvas, {
+                            type: 'line',
+                            data: {
+                                labels: data.labels,
+                                datasets: [
+                                    { label: '{{ __('Service') }}',      data: data.service,      borderColor: '#0EA5E9', backgroundColor: 'rgba(14,165,233,0.12)',  tension: 0.4, fill: true, pointRadius: 3 },
+                                    { label: '{{ __('Installation') }}', data: data.installation, borderColor: '#8B5CF6', backgroundColor: 'rgba(139,92,246,0.10)', tension: 0.4, fill: true, pointRadius: 3 },
+                                ]
+                            },
+                            options: {
+                                responsive: true,
+                                interaction: { mode: 'index', intersect: false },
+                                plugins: { legend: { position: 'top', labels: { color: tickColor, font: { size: 12 } } } },
+                                scales: {
+                                    x: { ticks: { color: tickColor, maxTicksLimit: 10 }, grid: { color: gridColor } },
+                                    y: { beginAtZero: true, ticks: { stepSize: 1, color: tickColor }, grid: { color: gridColor } }
+                                }
+                            }
+                        });
+                    }
+                }"
+                wire:ignore
+            >
+                <canvas x-ref="canvas" height="130"></canvas>
+            </div>
+        </div>
     </div>
 
     {{-- Service Type Breakdown --}}
