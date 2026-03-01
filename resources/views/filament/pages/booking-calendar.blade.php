@@ -173,7 +173,7 @@
                     </div>
                 @empty
                     <div class="flex flex-col items-center justify-center py-10 gap-2">
-                        <x-heroicon-o-user-slash class="w-8 h-8 text-gray-300" />
+                        <x-heroicon-o-user-minus class="w-8 h-8 text-gray-300" />
                         <p class="text-sm text-gray-500 dark:text-gray-400">{{ __('No active technicians') }}</p>
                     </div>
                 @endforelse
