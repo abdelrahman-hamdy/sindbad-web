@@ -3,33 +3,37 @@
 namespace App\Filament\Widgets;
 
 use App\Enums\RequestStatus;
+use App\Enums\RequestType;
 use App\Models\Request;
-use App\Models\User;
 use App\Services\RequestService;
 use Filament\Notifications\Notification;
-use Illuminate\Database\Eloquent\Model;
 use Saade\FilamentFullCalendar\Data\EventData;
 use Saade\FilamentFullCalendar\Widgets\FullCalendarWidget;
 
 class BookingCalendarWidget extends FullCalendarWidget
 {
-    public Model|string|null $model = Request::class;
+    // model = null → disables the auto-modal on event click
+    public \Illuminate\Database\Eloquent\Model|string|null $model = null;
 
     public function config(): array
     {
         return [
-            'initialView' => 'timeGridDay',
-            'editable' => true,
-            'eventResourceEditable' => true,
-            'slotMinTime' => '07:00:00',
-            'slotMaxTime' => '20:00:00',
-            'allDaySlot' => false,
-            'nowIndicator' => true,
-            'slotDuration' => '00:30:00',
-            'headerToolbar' => [
-                'left' => 'prev,next today',
+            'initialView'    => 'timeGridDay',
+            'editable'       => true,
+            'slotMinTime'    => '07:00:00',
+            'slotMaxTime'    => '20:00:00',
+            'allDaySlot'     => false,
+            'nowIndicator'   => true,
+            'slotDuration'   => '00:30:00',
+            'headerToolbar'  => [
+                'left'   => 'prev,next today',
                 'center' => 'title',
-                'right' => 'timeGridDay,timeGridWeek,dayGridMonth',
+                'right'  => 'timeGridDay,timeGridWeek,dayGridMonth',
+            ],
+            'eventTimeFormat' => [
+                'hour'   => '2-digit',
+                'minute' => '2-digit',
+                'hour12' => false,
             ],
         ];
     }
@@ -39,19 +43,25 @@ class BookingCalendarWidget extends FullCalendarWidget
         $requests = Request::with(['user:id,name', 'technician:id,name'])
             ->where(function ($q) use ($info) {
                 $q->whereBetween('scheduled_start_at', [$info['start'], $info['end']])
-                    ->orWhereBetween('scheduled_at', [$info['start'], $info['end']]);
+                    ->orWhere(function ($q2) use ($info) {
+                        $q2->whereNull('scheduled_start_at')
+                            ->whereBetween('scheduled_at', [$info['start'], $info['end']]);
+                    });
             })
             ->whereNotIn('status', [RequestStatus::Canceled->value, RequestStatus::Completed->value])
             ->get();
 
         return $requests->map(function (Request $request) {
             $start = $request->scheduled_start_at ?? $request->scheduled_at;
-            $end = $request->scheduled_end_at
+            $end   = $request->scheduled_end_at
                 ?? ($request->scheduled_start_at?->copy()->addHours(2))
-                ?? $request->scheduled_at?->copy()->endOfDay();
+                ?? $request->scheduled_at?->copy()->addHours(2);
 
-            $customerName = $request->user?->name ?? '-';
-            $title = "#{$request->id} - {$customerName}";
+            $typeIcon    = $request->type === RequestType::Installation ? '🏠' : '🔧';
+            $techName    = $request->technician?->name ?? __('Unassigned');
+            $customerName = $request->user?->name ?? '—';
+
+            $title = "{$typeIcon} #{$request->id} · {$customerName}\n📍 {$techName}";
 
             return EventData::make()
                 ->id($request->id)
@@ -61,27 +71,57 @@ class BookingCalendarWidget extends FullCalendarWidget
                 ->backgroundColor($this->statusToColor($request->status))
                 ->borderColor($this->statusToColor($request->status))
                 ->extendedProps([
-                    'status' => $request->status->value,
-                    'type' => $request->type->value,
-                    'technician' => $request->technician?->name ?? __('Unassigned'),
-                    'technician_id' => $request->technician_id,
+                    'status'       => $request->status->value,
+                    'type'         => $request->type->value,
+                    'technician'   => $techName,
+                    'customer'     => $customerName,
+                    'request_id'   => $request->id,
+                    'is_unassigned' => is_null($request->technician_id),
                 ])
                 ->toArray();
         })->toArray();
     }
 
+    /**
+     * Called when an event is clicked — redirect to the request view page.
+     */
+    public function onEventClick(array $event): void
+    {
+        $requestId = $event['id'] ?? null;
+        if (! $requestId) {
+            return;
+        }
+
+        $request = Request::find($requestId);
+        if (! $request) {
+            return;
+        }
+
+        $url = $request->isService()
+            ? \App\Filament\Resources\ServiceRequestResource::getUrl('view', ['record' => $requestId])
+            : \App\Filament\Resources\InstallationRequestResource::getUrl('view', ['record' => $requestId]);
+
+        $this->redirect($url);
+    }
+
+    /**
+     * Called when an event is dragged to a new time slot.
+     * Returns true to revert the drag, false to keep the new position.
+     */
     public function onEventDrop(array $event, array $oldEvent, array $relatedEvents, array $delta, ?array $oldResource, ?array $newResource): bool
     {
         try {
             $request = Request::findOrFail($event['id']);
 
             $newStart = \Carbon\Carbon::parse($event['start']);
-            $newEnd = isset($event['end']) ? \Carbon\Carbon::parse($event['end']) : $newStart->copy()->addHours(2);
+            $newEnd   = isset($event['end'])
+                ? \Carbon\Carbon::parse($event['end'])
+                : $newStart->copy()->addHours(2);
 
             $timing = [
                 'scheduled_start_at' => $newStart,
-                'scheduled_end_at' => $newEnd,
-                'scheduled_at' => $newStart->toDateString(),
+                'scheduled_end_at'   => $newEnd,
+                'scheduled_at'       => $newStart->toDateString(),
             ];
 
             if ($request->technician_id) {
@@ -89,6 +129,8 @@ class BookingCalendarWidget extends FullCalendarWidget
             } else {
                 $request->update($timing);
             }
+
+            $this->dispatch('calendar-updated');
 
             Notification::make()
                 ->title(__('Request rescheduled'))
@@ -103,7 +145,7 @@ class BookingCalendarWidget extends FullCalendarWidget
                 ->danger()
                 ->send();
 
-            return true; // revert the drop
+            return true;
         }
     }
 
@@ -120,12 +162,12 @@ class BookingCalendarWidget extends FullCalendarWidget
     private function statusToColor(RequestStatus $status): string
     {
         return match ($status) {
-            RequestStatus::Pending => '#f59e0b',     // amber
-            RequestStatus::Assigned => '#3b82f6',    // blue
-            RequestStatus::OnWay => '#8b5cf6',       // violet
-            RequestStatus::InProgress => '#06b6d4',  // cyan
-            RequestStatus::Completed => '#22c55e',   // green
-            RequestStatus::Canceled => '#ef4444',    // red
+            RequestStatus::Pending    => '#f59e0b',
+            RequestStatus::Assigned   => '#3b82f6',
+            RequestStatus::OnWay      => '#8b5cf6',
+            RequestStatus::InProgress => '#06b6d4',
+            RequestStatus::Completed  => '#22c55e',
+            RequestStatus::Canceled   => '#ef4444',
         };
     }
 }
