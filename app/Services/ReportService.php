@@ -140,12 +140,13 @@ class ReportService
 
     public function getLatestRatings(int $limit = 20): array
     {
-        return Rating::with(['user:id,name', 'request:id,invoice_number,type'])
+        return Rating::with(['user:id,name,avatar_url', 'request:id,invoice_number,type'])
             ->latest()
             ->limit($limit)
             ->get()
             ->map(fn($rating) => [
                 'customer'       => $rating->user?->name ?? '-',
+                'avatar_url'     => $rating->user?->avatar_url,
                 'invoice_number' => $rating->request?->invoice_number ?? '-',
                 'type'           => $rating->request?->type?->value ?? '-',
                 'product_rating' => $rating->product_rating,

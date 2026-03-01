@@ -34,8 +34,6 @@ class ReportsPage extends Page
     public array $typeBreakdown = [];
     public array $trendData = [];
     public float $avgCompletion = 0.0;
-    public string $dailyDate = '';
-    public array $dailyActivity = [];
 
     public function mount(ReportService $service): void
     {
@@ -50,8 +48,6 @@ class ReportsPage extends Page
         $this->typeBreakdown    = $service->getServiceTypeBreakdown();
         $this->avgCompletion    = $service->getAvgCompletionTime();
         $this->trendData        = $service->getRequestTrendsGrouped(30);
-        $this->dailyDate        = now()->format('Y-m-d');
-        $this->loadDailyActivity();
     }
 
     public function updatedPeriod(): void
@@ -62,18 +58,6 @@ class ReportsPage extends Page
     public function updatedTrendPeriod(): void
     {
         $this->trendData = app(ReportService::class)->getRequestTrendsGrouped((int) $this->trendPeriod);
-    }
-
-    public function loadDailyActivity(): void
-    {
-        if ($this->dailyDate) {
-            $this->dailyActivity = app(ReportService::class)->getDailyActivity($this->dailyDate);
-        }
-    }
-
-    public function updatedDailyDate(): void
-    {
-        $this->loadDailyActivity();
     }
 
     public function getTitle(): string

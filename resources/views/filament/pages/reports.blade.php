@@ -1,4 +1,7 @@
 <x-filament-panels::page>
+@once
+    @vite(['resources/js/app.js'])
+@endonce
 @php
     $medals = ['🥇', '🥈', '🥉'];
     $starSvg = '<svg class="inline h-4 w-4 text-amber-400" fill="currentColor" viewBox="0 0 20 20"><path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z"/></svg>';
@@ -24,10 +27,8 @@
                 ] as $value => $label)
                     <button
                         wire:click="$set('period', '{{ $value }}')"
-                        class="px-3 py-1.5 text-sm font-semibold rounded-lg transition-all duration-150 focus:outline-none
-                            {{ $period === $value
-                                ? 'bg-[#008BA0] text-white shadow-sm dark:bg-cyan-600'
-                                : 'bg-[rgba(0,139,160,0.15)] text-[#006A7A] dark:bg-cyan-400/10 dark:text-cyan-300' }}"
+                        style="{{ $period === $value ? 'background-color:#008BA0;color:#fff;' : 'background-color:rgba(0,139,160,0.15);color:#006A7A;' }}"
+                        class="px-3 py-1.5 text-sm font-semibold rounded-lg transition-all duration-150 focus:outline-none"
                     >
                         {{ $label }}
                     </button>
@@ -131,10 +132,8 @@
                     @foreach(['7' => __('7 Days'), '30' => __('30 Days'), '90' => __('90 Days')] as $tv => $tl)
                         <button
                             wire:click="$set('trendPeriod', '{{ $tv }}')"
-                            class="px-3 py-1.5 text-sm font-semibold rounded-lg transition-all duration-150 focus:outline-none
-                                {{ $trendPeriod === $tv
-                                    ? 'bg-[#008BA0] text-white shadow-sm dark:bg-cyan-600'
-                                    : 'bg-[rgba(0,139,160,0.15)] text-[#006A7A] dark:bg-cyan-400/10 dark:text-cyan-300' }}"
+                            style="{{ $trendPeriod === $tv ? 'background-color:#008BA0;color:#fff;' : 'background-color:rgba(0,139,160,0.15);color:#006A7A;' }}"
+                            class="px-3 py-1.5 text-sm font-semibold rounded-lg transition-all duration-150 focus:outline-none"
                         >
                             {{ $tl }}
                         </button>
@@ -461,77 +460,6 @@
 </div>
 
 {{-- ═══════════════════════════════════════════════════════════
-     G. DAILY ACTIVITY
-═══════════════════════════════════════════════════════════ --}}
-<div class="mb-6">
-    <x-filament::section :heading="__('Daily Activity')" icon="heroicon-o-calendar-days">
-        <x-slot name="afterHeader">
-            <input
-                type="date"
-                wire:model.live="dailyDate"
-                class="rounded-lg border border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white text-sm shadow-sm px-3 py-1.5 focus:ring-2 focus:ring-[#008BA0] focus:border-[#008BA0]"
-            >
-        </x-slot>
-
-        @if (count($dailyActivity) === 0)
-            <div class="text-center py-8">
-                <svg class="mx-auto h-10 w-10 text-gray-300 dark:text-gray-600 mb-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"/>
-                </svg>
-                <p class="text-sm text-gray-400">{{ __('No completed requests on this date.') }}</p>
-            </div>
-        @else
-            <div class="overflow-x-auto">
-                <table class="w-full text-sm">
-                    <thead>
-                        <tr class="text-left text-gray-500 dark:text-gray-400 border-b dark:border-gray-700">
-                            <th class="pb-2 font-semibold">{{ __('Invoice') }}</th>
-                            <th class="pb-2 font-semibold">{{ __('Type') }}</th>
-                            <th class="pb-2 font-semibold">{{ __('Customer') }}</th>
-                            <th class="pb-2 font-semibold">{{ __('Technician') }}</th>
-                            <th class="pb-2 font-semibold">{{ __('Rating') }}</th>
-                            <th class="pb-2 font-semibold">{{ __('Completed At') }}</th>
-                        </tr>
-                    </thead>
-                    <tbody class="divide-y divide-gray-100 dark:divide-gray-700">
-                        @foreach ($dailyActivity as $row)
-                            <tr class="odd:bg-white even:bg-gray-50/50 dark:odd:bg-gray-800 dark:even:bg-gray-700/20 hover:bg-[rgba(0,139,160,0.04)] dark:hover:bg-cyan-900/10 transition-colors">
-                                <td class="py-2.5 px-1 font-medium text-gray-900 dark:text-white">{{ $row['invoice_number'] ?? '#'.$row['id'] }}</td>
-                                <td class="py-2.5 px-1">
-                                    <span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium
-                                        {{ $row['type'] === 'service'
-                                            ? 'bg-sky-100 text-sky-800 dark:bg-sky-900/30 dark:text-sky-300'
-                                            : 'bg-violet-100 text-violet-800 dark:bg-violet-900/30 dark:text-violet-300' }}">
-                                        {{ ucfirst($row['type']) }}
-                                    </span>
-                                </td>
-                                <td class="py-2.5 px-1 text-gray-700 dark:text-gray-300">{{ $row['customer'] }}</td>
-                                <td class="py-2.5 px-1 text-gray-700 dark:text-gray-300">{{ $row['technician'] }}</td>
-                                <td class="py-2.5 px-1">
-                                    @if ($row['rating'])
-                                        <div class="flex items-center gap-1">
-                                            @for ($s = 1; $s <= 5; $s++)
-                                                <svg class="h-3.5 w-3.5 {{ $s <= round($row['rating']) ? 'text-amber-400' : 'text-gray-200 dark:text-gray-700' }}" fill="currentColor" viewBox="0 0 20 20">
-                                                    <path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z"/>
-                                                </svg>
-                                            @endfor
-                                            <span class="text-xs text-gray-500 ms-0.5">{{ $row['rating'] }}</span>
-                                        </div>
-                                    @else
-                                        <span class="text-gray-300 dark:text-gray-600">—</span>
-                                    @endif
-                                </td>
-                                <td class="py-2.5 px-1 text-gray-500 dark:text-gray-400 text-xs">{{ $row['completed_at'] }}</td>
-                            </tr>
-                        @endforeach
-                    </tbody>
-                </table>
-            </div>
-        @endif
-    </x-filament::section>
-</div>
-
-{{-- ═══════════════════════════════════════════════════════════
      H. LATEST RATINGS
 ═══════════════════════════════════════════════════════════ --}}
 <div class="mb-6">
@@ -548,14 +476,20 @@
                 @foreach ($latestRatings as $rating)
                     @php
                         $initial = strtoupper(mb_substr($rating['customer'], 0, 1));
+                        $avatarUrl = $rating['avatar_url'] ?? null;
                     @endphp
                     <div class="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 shadow-sm p-4">
 
                         {{-- Header: avatar + name + invoice --}}
                         <div class="flex items-start gap-3 mb-3">
-                            <div class="w-9 h-9 rounded-full bg-gradient-to-br from-green-400 to-green-600 flex items-center justify-center shrink-0">
-                                <span class="text-sm font-bold text-white">{{ $initial }}</span>
-                            </div>
+                            @if ($avatarUrl)
+                                <img src="{{ $avatarUrl }}" alt="{{ $rating['customer'] }}"
+                                     class="w-9 h-9 rounded-full object-cover shrink-0 border border-gray-200 dark:border-gray-600">
+                            @else
+                                <div class="w-9 h-9 rounded-full bg-gradient-to-br from-green-400 to-green-600 flex items-center justify-center shrink-0">
+                                    <span class="text-sm font-bold text-white">{{ $initial }}</span>
+                                </div>
+                            @endif
                             <div class="flex-1 min-w-0">
                                 <p class="text-sm font-semibold text-gray-900 dark:text-white truncate">{{ $rating['customer'] }}</p>
                                 <p class="text-xs text-gray-400">{{ $rating['invoice_number'] }}</p>
