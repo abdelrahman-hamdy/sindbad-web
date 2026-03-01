@@ -192,7 +192,5 @@
 
     </div>
 
-    {{-- Render page-level action modals (scheduleRequest) --}}
-    <x-filament-actions::modals />
 
 </x-filament-panels::page>

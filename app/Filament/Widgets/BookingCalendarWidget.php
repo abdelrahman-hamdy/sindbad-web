@@ -48,7 +48,7 @@ class BookingCalendarWidget extends FullCalendarWidget
     {
         $this->filterTechnician = $technician ?: null;
         $this->filterType       = $type ?: null;
-        $this->dispatch('filament-fullcalendar--refetch');
+        $this->dispatch('filament-fullcalendar--refresh');
     }
 
     public function fetchEvents(array $info): array
@@ -137,15 +137,16 @@ class BookingCalendarWidget extends FullCalendarWidget
                 $r = Request::with(['user', 'technician'])->find($this->selectedRequestId);
 
                 return [
-                    'info_customer' => $r?->user?->name ?? '—',
-                    'info_type'     => $r?->type?->label() ?? '—',
-                    'info_status'   => $r?->status?->label() ?? '—',
-                    'info_address'  => $r?->address ?? '—',
-                    'info_date'     => $r?->scheduled_at?->format('M d, Y') ?? '—',
-                    'technician_id' => $r?->technician_id,
-                    'scheduled_at'  => $r?->scheduled_at?->toDateString(),
-                    'end_date'      => $r?->end_date?->toDateString(),
-                    'status'        => $r?->status?->value,
+                    'info_customer'  => $r?->user?->name ?? '—',
+                    'info_type'      => $r?->type?->label() ?? '—',
+                    'info_status'    => $r?->status?->label() ?? '—',
+                    'info_address'   => $r?->address ?? '—',
+                    'info_date'      => $r?->scheduled_at?->format('M d, Y') ?? '—',
+                    'technician_id'  => $r?->technician_id,
+                    'scheduled_at'   => $r?->scheduled_at?->toDateString(),
+                    'end_date'       => $r?->end_date?->toDateString(),
+                    'status'         => $r?->status?->value,
+                    'is_installation' => $r?->type === RequestType::Installation,
                 ];
             })
             ->schema([
@@ -183,7 +184,8 @@ class BookingCalendarWidget extends FullCalendarWidget
                         ->required(),
                     DatePicker::make('end_date')
                         ->label(__('End Date'))
-                        ->visible(fn (Get $get) => Request::find($this->selectedRequestId)?->type === RequestType::Installation)
+                        // Use form state instead of a separate DB query
+                        ->visible(fn (Get $get) => (bool) $get('is_installation'))
                         ->afterOrEqual('scheduled_at'),
                 ])->columns(2),
             ])
@@ -206,7 +208,7 @@ class BookingCalendarWidget extends FullCalendarWidget
                 }
 
                 Notification::make()->title(__('Request updated'))->success()->send();
-                $this->dispatch('filament-fullcalendar--refetch');
+                $this->dispatch('filament-fullcalendar--refresh');
             });
     }
 

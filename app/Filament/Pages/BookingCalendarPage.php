@@ -85,10 +85,11 @@ class BookingCalendarPage extends Page
                     'req_type'       => $r?->type?->label() ?? '—',
                     'req_address'    => $r?->address ?? '—',
                     'req_pref_date'  => $r?->scheduled_at?->format('M d, Y') ?? __('No preference'),
-                    'req_is_install' => $r?->type === RequestType::Installation,
-                    'technician_id'  => null,
-                    'scheduled_at'   => null,
-                    'end_date'       => null,
+                    'req_is_install'      => $r?->type === RequestType::Installation,
+                    'technician_id'       => null,
+                    'scheduled_at'        => null,
+                    'install_scheduled_at' => null,
+                    'end_date'            => null,
                 ];
             })
             ->schema([
@@ -196,8 +197,8 @@ class BookingCalendarPage extends Page
 
                 Notification::make()->title(__('Request scheduled successfully'))->success()->send();
                 $this->loadSidebarData();
-                $this->dispatch('filament-fullcalendar--refetch')
-                    ->to(\App\Filament\Widgets\BookingCalendarWidget::class);
+                // Dispatch browser event — FullCalendar JS listens on window for this
+                $this->dispatch('filament-fullcalendar--refresh');
             });
     }
 
